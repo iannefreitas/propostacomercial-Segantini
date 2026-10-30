@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gerador de Propostas · Segantini</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/png" href="/assets/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;1,400&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/styles.css" />
+  <link rel="stylesheet" href="/css/gerador.css" />
+</head>
+<body class="gen">
+  <header class="gen__top">
+    <img src="/assets/simbolo-segantini-laranja.png" alt="" width="34" height="27" />
+    <div><strong>Gerador de propostas</strong><span>Uso interno · time comercial Segantini</span></div>
+  </header>
+
+  <main class="gen__main">
+    <section class="gen__form">
+      <p class="eyebrow">1 · Para quem é</p>
+      <div class="form__row">
+        <div class="field"><label for="g-nome">Nome do gestor</label><input id="g-nome" maxlength="80" placeholder="Ex.: Carla Souza" /></div>
+        <div class="field"><label for="g-empresa">Empresa</label><input id="g-empresa" maxlength="100" placeholder="Ex.: Rede Exemplo" /></div>
+      </div>
+      <div class="form__row">
+        <div class="field"><label for="g-vendedor">Seu nome (vendedor)</label><input id="g-vendedor" maxlength="60" placeholder="Ex.: Ana" /></div>
+        <div class="field"><label for="g-fone">WhatsApp do gestor <span>(opcional)</span></label><input id="g-fone" inputmode="tel" maxlength="20" placeholder="(84) 9 9999-9999" /></div>
+      </div>
+
+      <p class="eyebrow">2 · Desafios que vocês já conversaram <span class="gen__opt">(chegam pré-marcados)</span></p>
+      <div class="gen__chips" id="g-desafios"></div>
+
+      <p class="eyebrow">3 · Soluções a destacar <span class="gen__opt">(até 4, aparecem primeiro)</span></p>
+      <div class="gen__chips" id="g-solucoes"></div>
+
+      <p class="eyebrow">4 · Mensagem de abertura <span class="gen__opt">(opcional)</span></p>
+      <div class="field">
+        <textarea id="g-msg" maxlength="400" placeholder="Ex.: Carla, foi ótimo conversar sobre o crescimento do time. Preparei esta apresentação com os pontos que você trouxe."></textarea>
+        <div class="char"><span id="g-cc">0</span>/400</div>
+      </div>
+      <p class="muted">⚠️ O link não é criptografado: não coloque valores, preços ou dados sensíveis aqui.</p>
+    </section>
+
+    <aside class="gen__out">
+      <p class="eyebrow">Link da proposta</p>
+      <div class="gen__code">Código: <b id="g-id">—</b></div>
+      <textarea id="g-link" readonly rows="4"></textarea>
+      <div class="gen__actions">
+        <button class="btn btn--primary" type="button" id="g-copy">Copiar link</button>
+        <a class="btn btn--outline" id="g-preview" target="_blank" rel="noopener">Ver como o gestor</a>
+        <a class="btn btn--wa" id="g-wa" target="_blank" rel="noopener">Enviar no WhatsApp</a>
+      </div>
+      <p class="muted" id="g-hint">Preencha ao menos a empresa para gerar o link.</p>
+
+      <div class="gen__hist">
+        <p class="eyebrow">Gerados neste navegador</p>
+        <ul id="g-hist"><li class="muted">Nenhum ainda.</li></ul>
+      </div>
+    </aside>
+  </main>
+
+  <div class="toast" id="toast" role="status"></div>
+  <script src="/js/content.js"></script>
+  <script src="/js/gerador.js"></script>
+</body>
+</html>

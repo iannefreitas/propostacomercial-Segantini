@@ -64,6 +64,35 @@
   const solById = Object.fromEntries(C.solucoes.map((s) => [s.id, s]));
   const desById = Object.fromEntries(C.desafios.map((d) => [d.id, d]));
 
+  /* ---------------- Proposta personalizada ----------------
+     Links gerados em /gerador trazem ?p=<código>. O código é um JSON em base64
+     com: n (nome do gestor), e (empresa), v (vendedor), m (mensagem),
+     d (ids de desafios), s (ids de soluções), id (código da proposta). */
+  const PROP = (() => {
+    try {
+      const raw = params.get("p");
+      if (!raw) return null;
+      const bin = atob(raw.replace(/-/g, "+").replace(/_/g, "/"));
+      const o = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0))));
+      const txt = (v, max) => (typeof v === "string" ? v.trim().slice(0, max) : "");
+      const ids = (v, map) => (Array.isArray(v) ? v.filter((x) => map[x]).slice(0, 13) : []);
+      return {
+        nome: txt(o.n, 80), empresa: txt(o.e, 100), vendedor: txt(o.v, 60),
+        msg: txt(o.m, 400), id: txt(o.id, 30).replace(/[^\w-]/g, ""),
+        desafios: ids(o.d, desById), solucoes: ids(o.s, solById).slice(0, 4),
+      };
+    } catch { return null; }
+  })();
+  if (PROP) {
+    state.nome = PROP.nome;
+    state.empresa = PROP.empresa;
+    if (PROP.vendedor) state.vendedor = PROP.vendedor;
+    state.origem = ["Proposta " + (PROP.id || "personalizada"), state.origem].filter(Boolean).join(" · ").slice(0, 60);
+    PROP.desafios.forEach((id) => state.desafios.add(id));
+    document.title = `Segantini · Proposta para ${PROP.empresa || PROP.nome}`;
+  }
+  const firstName = (n) => (n || "").trim().split(/\s+/)[0];
+
   function recomendadas(set = state.desafios) {
     const score = {};
     set.forEach((id) => (desById[id]?.solucoes || []).forEach((s, idx) => (score[s] = (score[s] || 0) + (3 - Math.min(idx, 2)))));
@@ -81,8 +110,10 @@
         <section class="screen screen--dark hero">
           <div class="wrap">
             <img class="hero__logo" src="/assets/logo-segantini-branca.png" alt="Segantini Psicologia Empresarial" width="716" height="438" />
+            ${PROP && (PROP.empresa || PROP.nome) ? `<p class="hero__for">${ico("sparkle")} Preparada para ${esc(PROP.empresa || PROP.nome)}</p>` : ""}
             <h1 class="hero__title">${esc(a.titulo)}<em>${esc(a.tituloDestaque)}</em></h1>
-            <p class="hero__sub">${esc(a.subtitulo)}</p>
+            <p class="hero__sub">${PROP && PROP.nome ? `Olá, ${esc(firstName(PROP.nome))}! ` : ""}${esc(a.subtitulo)}</p>
+            ${PROP && PROP.msg ? `<blockquote class="hero__msg"><p>${esc(PROP.msg)}</p>${PROP.vendedor ? `<cite>${esc(PROP.vendedor)} · Segantini</cite>` : ""}</blockquote>` : ""}
             <div class="hero__cta">
               <button class="btn btn--light btn--lg" type="button" data-next>Começar ${ico("right")}</button>
               <span class="hero__meta">${ico("clock")} Leva cerca de 3 minutos</span>
@@ -133,6 +164,7 @@
           <p class="eyebrow">Etapa 2 · Seus desafios</p>
           <h2 class="h1">Sua empresa enfrenta <em>algum destes desafios?</em></h2>
           <p class="lead">Os desafios mudam de empresa para empresa. Os sintomas, quase sempre, se repetem. Toque em todos que fazem parte da sua realidade.</p>
+          ${PROP && PROP.desafios.length ? `<p class="prefill-note">${ico("check")} Já marcamos os pontos da nossa conversa. Confirme, ajuste ou acrescente.</p>` : ""}
           <div class="counter-badge" id="desCount"></div>
           <div class="grid-select">
             ${C.desafios.map((d, k) => `
@@ -166,20 +198,22 @@
     {
       step: 2,
       render() {
-        const rec = recomendadas();
-        const recSet = new Set(rec.slice(0, 4));
+        const forced = PROP ? PROP.solucoes : [];
+        const rec = [...new Set([...forced, ...recomendadas()])];
+        const recSet = new Set(forced.length ? forced : rec.slice(0, 4));
+        const tag = forced.length ? `Recomendada para ${PROP.empresa || "você"}` : "Ligada aos seus desafios";
         const ordered = [...C.solucoes].sort((a, b) => (recSet.has(b.id) ? 1 : 0) - (recSet.has(a.id) ? 1 : 0) || rec.indexOf(a.id) - rec.indexOf(b.id));
         return `
         <section class="screen"><div class="wrap">
           <p class="eyebrow">Etapa 3 · Como podemos ajudar</p>
           <h2 class="h1">Um portfólio para <em>cada momento da empresa</em></h2>
-          <p class="lead">${recSet.size ? "Destacamos primeiro as soluções ligadas aos desafios que você marcou." : "Conheça as soluções da Segantini."} Toque em uma solução para ver o que ela resolve e marque as que fizerem sentido.</p>
+          <p class="lead">${forced.length ? "Destacamos primeiro o que recomendamos para o seu momento." : recSet.size ? "Destacamos primeiro as soluções ligadas aos desafios que você marcou." : "Conheça as soluções da Segantini."} Toque em uma solução para ver o que ela resolve e marque as que fizerem sentido.</p>
           <div class="sol-grid">
             ${ordered.map((s, k) => `
               <article class="sol ${recSet.has(s.id) ? "is-rec" : ""} ${k === 0 ? "is-open" : ""}" data-sol="${esc(s.id)}" style="animation-delay:${0.04 * k}s">
                 <button type="button" class="sol__head" aria-expanded="${k === 0}">
                   <span class="ico">${ico(s.icone)}</span>
-                  <span>${recSet.has(s.id) ? '<span class="sol__tag">Ligada aos seus desafios</span>' : ""}<h3>${esc(s.nome)}</h3><p>${esc(s.descricao)}</p></span>
+                  <span>${recSet.has(s.id) ? `<span class="sol__tag">${esc(tag)}</span>` : ""}<h3>${esc(s.nome)}</h3><p>${esc(s.descricao)}</p></span>
                   <span class="chev">${ico("chevron")}</span>
                 </button>
                 <div class="sol__body"><div><div class="sol__rows">
@@ -372,7 +406,7 @@
       step: 5, dark: true, final: true,
       render() {
         const first = esc(state.nome.trim().split(/\s+/)[0] || "");
-        const recIds = [...new Set([...(state.diagSolucoes || [])].filter((id) => solById[id]).concat(recomendadas(state.diagDesafios || state.desafios)))].slice(0, 3);
+        const recIds = [...new Set([...(PROP ? PROP.solucoes : []), ...[...(state.diagSolucoes || [])].filter((id) => solById[id]), ...recomendadas(state.diagDesafios || state.desafios)])].slice(0, 3);
         const badge = state.sendStatus === "ok"
           ? `<span class="success-badge">${ico("check")} Respostas recebidas pelo nosso time</span>`
           : `<span class="success-badge is-warn">${ico("message")} Não conseguimos registrar automaticamente — envie pelo WhatsApp abaixo</span>`;

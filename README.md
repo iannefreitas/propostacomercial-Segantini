@@ -37,6 +37,24 @@ https://SEU-LINK.vercel.app/?v=Ana
 https://SEU-LINK.vercel.app/?v=Carlos&utm_source=instagram
 ```
 
+## Propostas personalizadas por gestor
+
+Página interna: **`/gerador`** (ex.: `https://apresentacao-segantini.vercel.app/gerador`).
+O vendedor preenche nome do gestor, empresa, desafios já conversados, até 4 soluções a destacar e uma
+mensagem de abertura, e recebe um link único (com botões Copiar, Ver como o gestor e Enviar no WhatsApp).
+
+O gestor que abre o link vê:
+- selo "Preparada para {empresa}", saudação pelo nome e a mensagem do vendedor na abertura;
+- os desafios combinados já marcados (pode ajustar);
+- as soluções escolhidas no topo, com o selo "Recomendada para {empresa}";
+- nome e empresa já preenchidos no formulário.
+
+Na planilha, as respostas chegam com o código da proposta (ex.: `Proposta REDEEXEMPL-3010A8`) na coluna
+**Origem** e o vendedor na coluna **Vendedor (link)** — sem nenhuma configuração extra no Apps Script.
+
+Limites: o link não é criptografado (não coloque preços ou dados sensíveis) e o histórico de links
+gerados fica só no navegador de quem gerou.
+
 ## Google Sheets — configuração (uma única vez, ~10 min)
 
 1. Crie uma planilha nova no Google Drive da conta da Segantini (ex.: "Leads · Apresentação comercial").
