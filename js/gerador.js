@@ -23,6 +23,15 @@
   }
   chips($("#g-desafios"), C.desafios, sel.d);
   chips($("#g-solucoes"), C.solucoes, sel.s, MAX_SOL);
+  $("#g-sol-list").innerHTML = C.solucoes.map((x) => `<option value="${esc(x.nome)}"></option>`).join("");
+
+  // Validade padrão: 7 dias a partir de hoje (como na proposta institucional)
+  const vd = new Date(Date.now() + 7 * 864e5).toLocaleDateString("pt-BR");
+  $("#g-vd").value = `7 dias a partir do envio (até ${vd})`;
+
+  const F = { ctx: "#g-ctx", dor: "#g-dor", obj: "#g-obj", sol: "#g-sol", pr: "#g-pr", cad: "#g-cad", resp: "#g-resp",
+    pl: "#g-pl", val: "#g-val", per: "#g-per", tx: "#g-tx", oc: "#g-oc", pg: "#g-pg", ini: "#g-ini", vd: "#g-vd" };
+  const v = (sel) => $(sel).value.trim();
 
   const slug = (t) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Za-z0-9]+/g, "").toUpperCase().slice(0, 10);
   function newId() {
@@ -52,20 +61,25 @@
     if (empresa !== lastEmpresa) { id = empresa ? newId() : ""; lastEmpresa = empresa; }
     const ok = !!empresa;
     const obj = { n: nome, e: empresa, v: vendedor, m: msg, d: [...sel.d], s: [...sel.s], id };
+    Object.entries(F).forEach(([k, sel]) => (obj[k] = v(sel)));
+    const ent = $("#g-ent").value.split("\n").map((x) => x.replace(/^[\s•\-*]+/, "").trim()).filter(Boolean).slice(0, 12);
+    obj.ent = ent;
     Object.keys(obj).forEach((k) => (obj[k] === "" || (Array.isArray(obj[k]) && !obj[k].length)) && delete obj[k]);
-    const link = ok ? `${location.origin}/?p=${encode(obj)}` : "";
+    const link = ok ? `${location.origin}/#p=${encode(obj)}` : "";
     $("#g-link").value = link;
     $("#g-id").textContent = id || "—";
     $("#g-preview").href = link || "#";
     const first = nome.split(/\s+/)[0];
-    const text = `Olá${first ? `, ${first}` : ""}! Preparei uma apresentação rápida da Segantini para a ${empresa}. Leva cerca de 3 minutos: ${link}`;
+    const text = `Olá${first ? `, ${first}` : ""}! Conforme conversamos, preparei a proposta da Segantini para a ${empresa}. É rápida e interativa: ${link}`;
     $("#g-wa").href = ok ? `https://wa.me/${phone()}?text=${encodeURIComponent(text)}` : "#";
     ["#g-copy", "#g-preview", "#g-wa"].forEach((s) => $(s).classList.toggle("is-off", !ok));
     $("#g-hint").textContent = ok
-      ? "As respostas deste gestor chegam na planilha com este código na coluna “Origem”."
+      ? "No final, o botão “Quero avançar” abre o WhatsApp do comercial com o nome, a empresa e este código."
       : "Preencha ao menos a empresa para gerar o link.";
+    const chk = [["Empresa", empresa], ["Solução recomendada", v("#g-sol")], ["Entregáveis", ent.length], ["Valor", v("#g-val")], ["Forma de pagamento", v("#g-pg")]];
+    $("#g-check").innerHTML = chk.map(([t, x]) => `<span class="${x ? "ok" : ""}">${t}</span>`).join("");
   }
-  ["#g-nome", "#g-empresa", "#g-vendedor", "#g-fone", "#g-msg"].forEach((s) => $(s).addEventListener("input", update));
+  ["#g-nome", "#g-empresa", "#g-vendedor", "#g-fone", "#g-msg", "#g-ent", ...Object.values(F)].forEach((s) => $(s).addEventListener("input", update));
 
   // Vendedor lembrado neste navegador
   try { $("#g-vendedor").value = localStorage.getItem("seg_vendedor") || ""; } catch {}

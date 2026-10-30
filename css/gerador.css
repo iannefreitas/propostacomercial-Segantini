@@ -26,3 +26,8 @@
 .gen__hist li span { color: var(--ink-3); font-size: 12px; }
 .gen__hist button { border: 0; background: none; color: var(--brand); font-size: 12.5px; font-weight: 500; padding: 4px; }
 @media (max-width: 860px) { .gen__main { grid-template-columns: 1fr; } .gen__out { position: static; } }
+.gen__sec { margin-top: 30px !important; padding-top: 22px; border-top: 1px solid var(--line); }
+.gen__lbl { margin: 4px 0 -4px; font-size: 13px; font-weight: 600; color: var(--ink); }
+.gen__check { display: grid; gap: 4px; font-size: 12.5px; color: var(--ink-2); }
+.gen__check span::before { content: "○ "; color: var(--ink-3); }
+.gen__check span.ok::before { content: "✓ "; color: var(--ok); font-weight: 700; }

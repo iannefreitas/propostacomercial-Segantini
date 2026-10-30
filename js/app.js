@@ -36,6 +36,7 @@
     right: '<path d="M9 18l6-6-6-6"/>',
     clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
     sparkle: '<path d="M12 3l1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z"/>',
+    calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
     mail: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/>',
     globe: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
   };
@@ -54,33 +55,46 @@
     diagSolucoes: null, // inicializado a partir da etapa 3
     melhoria: "",
     nome: "", empresa: "", contato: "", consent: false, hp: "",
-    sendStatus: null, // "ok" | "fail" | null
+    sendStatus: null, // "ok" | "fail" | null (só no fluxo padrão)
     t0: Date.now(),
     vendedor: (params.get("v") || params.get("vendedor") || "").slice(0, 60),
     origem: (params.get("utm_source") || params.get("origem") || "").slice(0, 60),
   };
 
-  const STEPS = ["Conheça", "Desafios", "Soluções", "Clientes", "Sua empresa", "Próximo passo"];
+  let STEPS = ["Conheça", "Desafios", "Soluções", "Clientes", "Sua empresa", "Próximo passo"];
   const solById = Object.fromEntries(C.solucoes.map((s) => [s.id, s]));
   const desById = Object.fromEntries(C.desafios.map((d) => [d.id, d]));
 
   /* ---------------- Proposta personalizada ----------------
-     Links gerados em /gerador trazem ?p=<código>. O código é um JSON em base64
-     com: n (nome do gestor), e (empresa), v (vendedor), m (mensagem),
-     d (ids de desafios), s (ids de soluções), id (código da proposta). */
+     Links gerados em /gerador trazem #p=<código> (ou ?p=). O código é um JSON em
+     base64. Ficar no "#" faz com que valores da proposta não cheguem a servidores/logs.
+     Campos: n (gestor), e (empresa), v (vendedor), m (mensagem), id (código),
+     d (ids de desafios), s (ids de soluções em destaque),
+     ctx/dor/obj ("O seu momento"), sol (serviço), ent (entregáveis), pr/cad/resp ("Como acontece"),
+     pl/val/per/tx/oc (investimento), pg/ini/vd (condições). */
   const PROP = (() => {
     try {
-      const raw = params.get("p");
+      const raw = new URLSearchParams(location.hash.slice(1)).get("p") || params.get("p");
       if (!raw) return null;
       const bin = atob(raw.replace(/-/g, "+").replace(/_/g, "/"));
       const o = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0))));
       const txt = (v, max) => (typeof v === "string" ? v.trim().slice(0, max) : "");
       const ids = (v, map) => (Array.isArray(v) ? v.filter((x) => map[x]).slice(0, 13) : []);
-      return {
+      const lines = (v) => (Array.isArray(v) ? v : []).map((x) => txt(x, 200)).filter(Boolean).slice(0, 12);
+      const r = {
         nome: txt(o.n, 80), empresa: txt(o.e, 100), vendedor: txt(o.v, 60),
         msg: txt(o.m, 400), id: txt(o.id, 30).replace(/[^\w-]/g, ""),
         desafios: ids(o.d, desById), solucoes: ids(o.s, solById).slice(0, 4),
+        contexto: txt(o.ctx, 300), dor: txt(o.dor, 300), objetivo: txt(o.obj, 300),
+        servico: txt(o.sol, 120), entregaveis: lines(o.ent),
+        prazo: txt(o.pr, 160), cadencia: txt(o.cad, 200), responsavel: txt(o.resp, 160),
+        plano: txt(o.pl, 120), valor: txt(o.val, 60), periodo: txt(o.per, 120),
+        taxa: txt(o.tx, 200), outras: txt(o.oc, 300),
+        pagamento: txt(o.pg, 200), inicio: txt(o.ini, 200), validade: txt(o.vd, 200),
       };
+      r.temSolucao = !!(r.servico || r.entregaveis.length || r.contexto || r.dor || r.objetivo);
+      r.temInvest = !!(r.valor || r.plano || r.pagamento || r.taxa || r.outras);
+      return r;
     } catch { return null; }
   })();
   if (PROP) {
@@ -295,7 +309,7 @@
           <p class="muted">Transcrições fiéis das avaliações públicas no Google e dos depoimentos da apresentação institucional. Trechos entre [colchetes] foram ajustados apenas para leitura.</p>
           <div class="modal-list">${C.depoimentos.map((d) => quoteCard(d, true)).join("")}</div>`);
       },
-      hint: () => "Próximo: sua empresa",
+      hint: () => (PROP ? (PROP.temSolucao ? `Próximo: a solução para ${PROP.empresa || "você"}` : "Próximo: vamos começar") : "Próximo: sua empresa"),
     },
     /* 5 — Porte */
     {
@@ -435,6 +449,98 @@
     },
   ];
 
+  /* ---------------- Telas da proposta personalizada ----------------
+     Com um link de proposta, o diagnóstico (Sua empresa) e o Próximo passo
+     dão lugar a: A solução para X → Investimento e condições → Vamos começar? */
+  if (PROP) {
+    const pScreens = [];
+    const emp = PROP.empresa || "sua empresa";
+    if (PROP.temSolucao) pScreens.push({
+      key: "solucao",
+      render() {
+        const known = C.solucoes.find((x) => x.nome.toLowerCase() === PROP.servico.toLowerCase());
+        const momento = [PROP.contexto, PROP.dor, PROP.objetivo].filter(Boolean);
+        const marcados = [...state.desafios].map((id) => desById[id]?.titulo).filter(Boolean);
+        const como = [["Prazo", PROP.prazo], ["Cadência", PROP.cadencia], ["Responsável Segantini", PROP.responsavel]].filter((x) => x[1]);
+        return `
+        <section class="screen"><div class="wrap">
+          <p class="eyebrow">Proposta personalizada</p>
+          <h2 class="h1">A solução para <em>${esc(emp)}</em></h2>
+          <div class="prop">
+            <div class="prop__moment">
+              <p class="eyebrow">O seu momento</p>
+              ${momento.length ? `<ul>${momento.map((m) => `<li>${esc(m)}</li>`).join("")}</ul>` : ""}
+              ${marcados.length ? `<p class="prop__sub">Desafios que você marcou</p><div class="prop__chips">${marcados.map((t) => `<span>${esc(t)}</span>`).join("")}</div>` : ""}
+            </div>
+            <div class="prop__sol">
+              <p class="eyebrow">Solução recomendada</p>
+              ${PROP.servico ? `<h3 class="prop__name">${esc(PROP.servico)}</h3>` : ""}
+              ${known ? `<p class="prop__desc">${esc(known.resultado)}</p>` : ""}
+              <div class="prop__cols">
+                ${PROP.entregaveis.length ? `<div><p class="prop__label">Entregáveis</p><ul class="prop__list">${PROP.entregaveis.map((e) => `<li>${ico("check")}<span>${esc(e)}</span></li>`).join("")}</ul></div>` : ""}
+                ${como.length ? `<div><p class="prop__label">Como acontece</p><dl class="prop__how">${como.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl></div>` : ""}
+              </div>
+            </div>
+          </div>
+        </div></section>`;
+      },
+      hint: () => (PROP.temInvest ? "Próximo: investimento e condições" : "Próximo: vamos começar"),
+    });
+    if (PROP.temInvest) pScreens.push({
+      key: "invest", dark: true,
+      render() {
+        const conds = [["calendar", "Forma de pagamento", PROP.pagamento], ["clipboard", "Início", PROP.inicio], ["shield", "Validade", PROP.validade]].filter((x) => x[2]);
+        return `
+        <section class="screen screen--dark"><div class="wrap">
+          <p class="eyebrow">Investimento</p>
+          <h2 class="h1">Investimento e <em>condições</em></h2>
+          <div class="invest">
+            <div class="invest__price">
+              <p class="eyebrow">${esc(PROP.plano || PROP.servico || "Investimento")}</p>
+              ${PROP.valor ? `<p class="invest__val">${esc(PROP.valor)}</p>` : ""}
+              ${PROP.periodo ? `<p class="invest__per">${esc(PROP.periodo)}</p>` : ""}
+              ${PROP.taxa || PROP.outras ? `<hr />${PROP.taxa ? `<p>${esc(PROP.taxa)}</p>` : ""}${PROP.outras ? `<p>${esc(PROP.outras)}</p>` : ""}` : ""}
+            </div>
+            ${conds.length ? `<div class="invest__conds"><p class="eyebrow">Condições</p>${conds.map(([i, t, v]) => `<div class="invest__row"><span class="ico">${ico(i)}</span><div><strong>${esc(t)}</strong><span>${esc(v)}</span></div></div>`).join("")}</div>` : ""}
+          </div>
+        </div></section>`;
+      },
+      hint: () => "Próximo: vamos começar",
+    });
+    pScreens.push({
+      key: "start", dark: true, final: true,
+      render() {
+        const nomeSol = PROP.servico || PROP.plano;
+        const msg = `Olá! Sou ${PROP.nome || "gestor(a)"}${PROP.empresa ? `, da ${PROP.empresa}` : ""}. Vi a proposta da Segantini${PROP.id ? ` (${PROP.id})` : ""}${nomeSol ? ` de ${nomeSol}` : ""} e quero avançar.`;
+        return `
+        <section class="screen screen--dark"><div class="wrap final">
+          <div>
+            <p class="eyebrow">Próximos passos</p>
+            <h2 class="h1">Vamos <em>começar?</em></h2>
+            <p class="lead">${PROP.nome ? `${esc(firstName(PROP.nome))}, cada` : "Cada"} empresa tem uma realidade — e esta proposta foi construída para a de ${esc(emp)}.</p>
+            <ol class="steps">${C.proximosPassos.map((p) => `<li><div><strong>${esc(p.titulo)}</strong><span>${esc(p.texto)}</span></div></li>`).join("")}</ol>
+          </div>
+          <aside class="contact-card">
+            <p class="eyebrow" style="margin:0">Fale com a gente</p>
+            <p style="margin:0;color:rgba(255,255,255,.85);font-size:15px">Ficou alguma dúvida ou quer seguir? Responda direto para o nosso time comercial.</p>
+            <a class="btn btn--wa btn--lg" href="https://wa.me/${C.contato.whatsapp}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">${WA_SVG} Quero avançar</a>
+            <a class="btn btn--outline-light" href="https://wa.me/${C.contato.whatsapp}?text=${encodeURIComponent(`Olá! Sou ${PROP.nome || "gestor(a)"}${PROP.empresa ? `, da ${PROP.empresa}` : ""}. Tenho uma dúvida sobre a proposta${PROP.id ? ` ${PROP.id}` : ""}.`)}" target="_blank" rel="noopener">Tenho uma dúvida</a>
+            <a class="plain" href="mailto:${esc(C.contato.email)}">${ico("mail")} ${esc(C.contato.email)}</a>
+            <a class="plain" href="${esc(C.contato.site)}" target="_blank" rel="noopener">${ico("globe")} ${esc(C.contato.siteExibicao)}</a>
+            <img class="final__logo" src="/assets/logo-segantini-branca.png" alt="Segantini Psicologia Empresarial" />
+          </aside>
+        </div></section>`;
+      },
+      hint: () => "",
+    });
+    STEPS = ["Conheça", "Desafios", "Soluções", "Clientes"];
+    pScreens.forEach((sc) => {
+      STEPS.push({ solucao: "Sua solução", invest: "Investimento", start: "Vamos começar" }[sc.key]);
+      sc.step = STEPS.length - 1;
+    });
+    screens.splice(5, screens.length - 5, ...pScreens);
+  }
+
   /* ---------------- Componentes ---------------- */
   function quoteCard(d, showSource) {
     const ini = d.nome.trim().charAt(0).toUpperCase();
@@ -570,7 +676,7 @@
     const hint = $("#navHint");
     hint.textContent = typeof h === "object" ? h.t : h;
     hint.classList.toggle("is-ok", typeof h === "object" && h.ok);
-    if (s.final) { hint.innerHTML = `<a class="btn--link" href="#" id="restart">Rever a apresentação</a>`; $("#restart").onclick = (e) => { e.preventDefault(); state.sendStatus = null; go(0); }; }
+    if (s.final) { hint.innerHTML = `<a class="btn--link" href="#" id="restart">${PROP ? "Rever a proposta" : "Rever a apresentação"}</a>`; $("#restart").onclick = (e) => { e.preventDefault(); state.sendStatus = null; go(0); }; }
   }
   let busy = false;
   async function next() {
@@ -584,14 +690,14 @@
     if (i < 0 || i >= screens.length || i === state.i) return;
     const dir = i > state.i ? 1 : -1;
     state.i = i;
-    if (!fromPop) history.pushState({ i }, "", location.search ? location.search : location.pathname);
+    if (!fromPop) history.pushState({ i }, "");
     const cur = app.firstElementChild;
     if (cur) { cur.classList.add("is-leaving"); setTimeout(() => render(dir), 180); } else render(dir);
   }
   window.addEventListener("popstate", (e) => {
     const i = e.state?.i ?? 0;
     // Depois do envio, o "voltar" do celular não reabre o formulário (evita registro duplicado)
-    if (state.sendStatus && i >= 5 && i <= 9) { history.pushState({ i: state.i }, ""); return; }
+    if (!PROP && state.sendStatus && i >= 5 && i <= 9) { history.pushState({ i: state.i }, ""); return; }
     go(i, true);
   });
 

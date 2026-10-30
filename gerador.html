@@ -41,7 +41,37 @@
         <textarea id="g-msg" maxlength="400" placeholder="Ex.: Carla, foi ótimo conversar sobre o crescimento do time. Preparei esta apresentação com os pontos que você trouxe."></textarea>
         <div class="char"><span id="g-cc">0</span>/400</div>
       </div>
-      <p class="muted">⚠️ O link não é criptografado: não coloque valores, preços ou dados sensíveis aqui.</p>
+
+      <p class="eyebrow gen__sec">5 · A solução para a empresa</p>
+      <p class="gen__lbl">O seu momento <span class="gen__opt">(aparece no card escuro, um item por campo)</span></p>
+      <div class="field"><label for="g-ctx">Contexto <span>(porte, nº de colaboradores, estrutura de RH)</span></label><input id="g-ctx" maxlength="300" placeholder="Ex.: 45 colaboradores, uma pessoa responsável pelo RH" /></div>
+      <div class="field"><label for="g-dor">Principal desafio identificado</label><input id="g-dor" maxlength="300" placeholder="Ex.: Líderes técnicos sem preparo para gerir pessoas" /></div>
+      <div class="field"><label for="g-obj">O que precisa ser resolvido e até quando</label><input id="g-obj" maxlength="300" placeholder="Ex.: Estruturar rituais de liderança até março de 2027" /></div>
+      <div class="field"><label for="g-sol">Solução recomendada (nome do serviço)</label><input id="g-sol" list="g-sol-list" maxlength="120" placeholder="Escolha da lista ou escreva" /><datalist id="g-sol-list"></datalist></div>
+      <div class="field"><label for="g-ent">Entregáveis <span>(um por linha)</span></label><textarea id="g-ent" maxlength="1500" placeholder="Ex.:&#10;Diagnóstico de liderança&#10;6 encontros de formação&#10;Rituais de 1:1 e feedback implantados&#10;Relatório final com PDI por líder"></textarea></div>
+      <p class="gen__lbl">Como acontece</p>
+      <div class="form__row">
+        <div class="field"><label for="g-pr">Prazo do projeto</label><input id="g-pr" maxlength="160" placeholder="Ex.: 4 meses" /></div>
+        <div class="field"><label for="g-resp">Responsável Segantini</label><input id="g-resp" maxlength="160" placeholder="Ex.: Letícia Segantini" /></div>
+      </div>
+      <div class="field"><label for="g-cad">Cadência <span>(visitas, reuniões)</span></label><input id="g-cad" maxlength="200" placeholder="Ex.: 1 visita presencial por mês + reunião quinzenal on-line" /></div>
+
+      <p class="eyebrow gen__sec">6 · Investimento e condições</p>
+      <div class="form__row">
+        <div class="field"><label for="g-pl">Nome do serviço / plano <span>(vazio = usa a solução)</span></label><input id="g-pl" maxlength="120" /></div>
+        <div class="field"><label for="g-val">Valor</label><input id="g-val" maxlength="60" placeholder="Ex.: R$ 3.900" /></div>
+      </div>
+      <div class="field"><label for="g-per">Periodicidade</label><input id="g-per" maxlength="120" placeholder="Ex.: /mês · por 6 meses   ou   à vista" /></div>
+      <div class="form__row">
+        <div class="field"><label for="g-tx">Taxa de sucesso por vaga <span>(se houver)</span></label><input id="g-tx" maxlength="200" /></div>
+        <div class="field"><label for="g-oc">Outras condições específicas <span>(opcional)</span></label><input id="g-oc" maxlength="300" /></div>
+      </div>
+      <div class="field"><label for="g-pg">Forma de pagamento</label><input id="g-pg" maxlength="200" placeholder="Ex.: Boleto mensal, vencimento dia 10" /></div>
+      <div class="form__row">
+        <div class="field"><label for="g-ini">Início</label><input id="g-ini" maxlength="200" value="Mediante aceite formal da proposta" /></div>
+        <div class="field"><label for="g-vd">Validade</label><input id="g-vd" maxlength="200" /></div>
+      </div>
+      <p class="muted">🔒 Os dados da proposta ficam dentro do próprio link (depois do “#”), não são enviados a nenhum servidor nem gravados em planilha. Quem tiver o link consegue ver a proposta — como acontece com um PDF enviado.</p>
     </section>
 
     <aside class="gen__out">
@@ -54,6 +84,7 @@
         <a class="btn btn--wa" id="g-wa" target="_blank" rel="noopener">Enviar no WhatsApp</a>
       </div>
       <p class="muted" id="g-hint">Preencha ao menos a empresa para gerar o link.</p>
+      <div class="gen__check" id="g-check"></div>
 
       <div class="gen__hist">
         <p class="eyebrow">Gerados neste navegador</p>

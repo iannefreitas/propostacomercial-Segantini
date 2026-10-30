@@ -39,21 +39,30 @@ https://SEU-LINK.vercel.app/?v=Carlos&utm_source=instagram
 
 ## Propostas personalizadas por gestor
 
-Página interna: **`/gerador`** (ex.: `https://apresentacao-segantini.vercel.app/gerador`).
-O vendedor preenche nome do gestor, empresa, desafios já conversados, até 4 soluções a destacar e uma
-mensagem de abertura, e recebe um link único (com botões Copiar, Ver como o gestor e Enviar no WhatsApp).
+Página interna: **`/gerador`** (`https://apresentacao-segantini.vercel.app/gerador`).
 
-O gestor que abre o link vê:
-- selo "Preparada para {empresa}", saudação pelo nome e a mensagem do vendedor na abertura;
-- os desafios combinados já marcados (pode ajustar);
-- as soluções escolhidas no topo, com o selo "Recomendada para {empresa}";
-- nome e empresa já preenchidos no formulário.
+Dois modos de uso:
 
-Na planilha, as respostas chegam com o código da proposta (ex.: `Proposta REDEEXEMPL-3010A8`) na coluna
-**Origem** e o vendedor na coluna **Vendedor (link)** — sem nenhuma configuração extra no Apps Script.
+| Link | Para quê | Etapas finais |
+|------|----------|---------------|
+| Padrão (`/` ou `/?v=Ana`) | Primeiro contato com o lead | 5 · Sua empresa (diagnóstico → planilha) e 6 · Próximo passo |
+| Proposta (`/#p=...`, gerado no `/gerador`) | Lead já diagnosticado, proposta montada | 5 · A solução para {empresa} · 6 · Investimento e condições · 7 · Vamos começar? |
 
-Limites: o link não é criptografado (não coloque preços ou dados sensíveis) e o histórico de links
-gerados fica só no navegador de quem gerou.
+No gerador, o vendedor preenche:
+1. Gestor, empresa, vendedor e (opcional) WhatsApp do gestor
+2. Desafios já conversados (chegam pré-marcados) e até 4 soluções em destaque
+3. Mensagem de abertura
+4. **A solução para a empresa:** contexto, principal desafio, o que resolver e até quando; solução recomendada;
+   entregáveis (um por linha); prazo, cadência e responsável Segantini
+5. **Investimento e condições:** plano, valor, periodicidade, taxa de sucesso, outras condições,
+   forma de pagamento, início e validade (padrão: 7 dias, com a data calculada)
+
+Campos vazios simplesmente não aparecem. Sem nada nas seções 4/5, a tela correspondente é pulada.
+O botão final "Quero avançar" abre o WhatsApp do comercial com nome, empresa, código e solução.
+
+Privacidade: os dados ficam no próprio link, depois do `#` — essa parte não é enviada ao servidor,
+não aparece em logs e não é gravada em planilha. Quem tiver o link vê a proposta (como um PDF enviado).
+O histórico de links gerados fica só no navegador de quem gerou.
 
 ## Google Sheets — configuração (uma única vez, ~10 min)
 
