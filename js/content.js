@@ -25,6 +25,8 @@ window.SEGANTINI = {
     email: "comercial@segantiniconsultoria.com",
     site: "https://segantiniconsultoria.com",
     siteExibicao: "segantiniconsultoria.com",
+    // Nome usado na mensagem do botão "Quero avançar" da proposta
+    atendimento: "Letícia",
   },
 
   /* ---------------- ETAPA 1 — CONHEÇA A SEGANTINI ---------------- */

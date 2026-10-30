@@ -421,7 +421,7 @@
       const card = PROP
         ? `<p class="eyebrow" style="margin:0">Fale com a gente</p>
            <p class="contact-card__txt">Ficou alguma dúvida ou quer seguir? Responda direto para o nosso time comercial.</p>
-           <a class="btn btn--wa btn--lg" href="${wa(`Olá! Sou ${nome || "gestor(a)"}${emp ? `, da ${emp}` : ""}. Vi a proposta da Segantini${PROP.id ? ` (${PROP.id})` : ""}${PROP.servico || PROP.plano ? ` de ${PROP.servico || PROP.plano}` : ""} e quero avançar.`)}" target="_blank" rel="noopener">${WA_SVG} Quero avançar</a>
+           <a class="btn btn--wa btn--lg" href="${wa(`Acabei de visualizar a proposta, ${C.contato.atendimento}! Sou ${nome || "gestor(a)"}${emp ? `, da ${emp}` : ""}${PROP.id ? ` — proposta ${PROP.id}` : ""}${PROP.servico || PROP.plano ? ` (${PROP.servico || PROP.plano})` : ""}. Quero avançar.`)}" target="_blank" rel="noopener">${WA_SVG} Quero avançar</a>
            <a class="btn btn--outline-light" href="${wa(`Olá! Sou ${nome || "gestor(a)"}${emp ? `, da ${emp}` : ""}. Tenho uma dúvida sobre a proposta${PROP.id ? ` ${PROP.id}` : ""}.`)}" target="_blank" rel="noopener">Tenho uma dúvida</a>`
         : `<p class="eyebrow" style="margin:0">Fale com a gente</p>
            <p class="contact-card__txt">Deixe seus dados para o nosso time já chegar preparado — ou fale direto no WhatsApp.</p>
