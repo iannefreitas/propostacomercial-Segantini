@@ -42,7 +42,7 @@ window.SEGANTINI = {
       nome: "Letícia Segantini",
       cargo: "Fundadora e CEO",
       bio: "Especialista em Psicologia Organizacional e Gestão de Pessoas (PUC/RS). Mentorada pela G4 Educação e Cultura na Prática.",
-      foto: "assets/leticia-segantini.jpg",
+      foto: "/assets/leticia-segantini.jpg",
     },
     pilares: [
       { icone: "users", titulo: "Psicólogas organizacionais", texto: "Psicologia aplicada ao dia a dia." },
