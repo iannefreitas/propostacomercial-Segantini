@@ -15,9 +15,6 @@
 .gen__chip:disabled { opacity: .4; cursor: not-allowed; }
 .gen__out { position: sticky; top: 20px; background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; display: grid; gap: 12px; }
 .gen__out .eyebrow { margin: 0; }
-.gen__code { font-size: 13px; color: var(--ink-2); }
-.gen__code b { color: var(--brand); }
-#g-link { width: 100%; font: 12.5px/1.45 ui-monospace, Menlo, Consolas, monospace; color: var(--ink-2); border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 12px; resize: none; word-break: break-all; background: var(--cream); }
 .gen__actions { display: grid; gap: 8px; }
 .gen__actions .btn { width: 100%; }
 .gen__actions .is-off { opacity: .4; pointer-events: none; }
@@ -39,3 +36,7 @@
 .gen__add summary { cursor: pointer; font-size: 14px; font-weight: 500; color: var(--brand); }
 .gen__add[open] { display: grid; gap: 12px; padding-bottom: 14px; }
 .gen__add .btn { justify-self: start; }
+.gen__result { display: grid; gap: 10px; padding: 14px; border-radius: 14px; background: #FFF8F4; border: 1.5px solid rgba(206,71,23,.3); }
+.gen__result.is-stale { opacity: .5; }
+#g-link { width: 100%; font: 500 14px var(--sans); color: var(--brand); border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 12px; background: #fff; }
+.gen__out > .btn { width: 100%; }

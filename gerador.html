@@ -89,20 +89,22 @@
         <div class="field"><label for="g-ini">Início</label><input id="g-ini" maxlength="200" value="Mediante aceite formal da proposta" /></div>
         <div class="field"><label for="g-vd">Validade</label><input id="g-vd" maxlength="200" /></div>
       </div>
-      <p class="muted">🔒 Os dados da proposta ficam dentro do próprio link (depois do “#”), não são enviados a nenhum servidor nem gravados em planilha. Quem tiver o link consegue ver a proposta — como acontece com um PDF enviado.</p>
+      <p class="muted">🔒 A proposta fica guardada na aba “Propostas” da planilha comercial; o link leva só um código. Quem tiver o link consegue ver a proposta — como acontece com um PDF enviado.</p>
     </section>
 
     <aside class="gen__out">
       <p class="eyebrow">Link da proposta</p>
-      <div class="gen__code">Código: <b id="g-id">—</b></div>
-      <textarea id="g-link" readonly rows="4"></textarea>
-      <div class="gen__actions">
-        <button class="btn btn--primary" type="button" id="g-copy">Copiar link</button>
-        <a class="btn btn--outline" id="g-preview" target="_blank" rel="noopener">Ver como o gestor</a>
-        <a class="btn btn--wa" id="g-wa" target="_blank" rel="noopener">Enviar no WhatsApp</a>
+      <div class="gen__check" id="g-check"></div>
+      <a class="btn btn--outline" id="g-preview" target="_blank" rel="noopener">Pré-visualizar</a>
+      <button class="btn btn--primary" type="button" id="g-gen">Gerar link curto</button>
+      <div class="gen__result" id="g-result" hidden>
+        <input id="g-link" readonly />
+        <div class="gen__actions">
+          <button class="btn btn--primary" type="button" id="g-copy">Copiar link</button>
+          <a class="btn btn--wa" id="g-wa" target="_blank" rel="noopener">Enviar no WhatsApp</a>
+        </div>
       </div>
       <p class="muted" id="g-hint">Preencha ao menos a empresa para gerar o link.</p>
-      <div class="gen__check" id="g-check"></div>
 
       <div class="gen__hist">
         <p class="eyebrow">Gerados neste navegador</p>

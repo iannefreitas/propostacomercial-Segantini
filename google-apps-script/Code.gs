@@ -23,6 +23,9 @@ var HEADERS = [
   'O que quer melhorar', 'Vendedor (link)', 'Origem', 'Dispositivo', 'Tempo na apresentação (min)',
   'Status comercial', 'Observações do comercial'
 ];
+var PROP_SHEET = 'Propostas';
+var PROP_HEADERS = ['Criada em', 'Link (código)', 'Empresa', 'Gestor', 'Vendedor', 'Solução', 'Valor',
+  'Aberturas', 'Última abertura', 'Dados (não editar)'];
 var STATUS = ['Novo', 'Em contato', 'Reunião agendada', 'Proposta enviada', 'Fechado', 'Perdido'];
 
 function setup() {
@@ -40,6 +43,7 @@ function setup() {
   var rule = SpreadsheetApp.newDataValidation().requireValueInList(STATUS, true).build();
   sh.getRange(2, 16, sh.getMaxRows() - 1, 1).setDataValidation(rule);
   buildDashboard_(ss);
+  propSheet_();
   Logger.log('SEGREDO (copie para a variável SHEETS_SECRET na Vercel): ' + props.getProperty('SECRET'));
 }
 
@@ -59,6 +63,9 @@ function doPost(e) {
     var req = JSON.parse((e && e.postData && e.postData.contents) || '{}');
     var secret = PropertiesService.getScriptProperties().getProperty('SECRET');
     if (!secret || req.secret !== secret) return json_({ ok: false, error: 'unauthorized' });
+
+    if (req.action === 'saveProposal') return json_(saveProposal_(req));
+    if (req.action === 'getProposal') return json_(getProposal_(req));
 
     var d = req.data || {};
     var row = [
@@ -87,6 +94,54 @@ function doPost(e) {
     console.error(err);
     return json_({ ok: false, error: 'server_error' });
   }
+}
+
+/* ---------- propostas com link curto ---------- */
+
+function propSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName(PROP_SHEET);
+  if (!sh) {
+    sh = ss.insertSheet(PROP_SHEET);
+    sh.getRange(1, 1, 1, PROP_HEADERS.length).setValues([PROP_HEADERS])
+      .setFontWeight('bold').setBackground('#2A1209').setFontColor('#FFFFFF');
+    sh.setFrozenRows(1);
+    sh.setColumnWidths(1, PROP_HEADERS.length, 150);
+    sh.setColumnWidth(10, 120);
+  }
+  return sh;
+}
+
+function saveProposal_(req) {
+  var code = String(req.code || '');
+  if (!/^[a-z0-9-]{6,40}$/.test(code)) return { ok: false, error: 'bad_code' };
+  var json = String(req.json || '');
+  if (!json || json.length > 20000) return { ok: false, error: 'bad_data' };
+  var m = req.meta || {};
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var sh = propSheet_();
+    sh.appendRow([new Date(), code, m.empresa, m.gestor, m.vendedor, m.solucao, m.valor, 0, '', json].map(safe_));
+    sh.getRange(sh.getLastRow(), 1).setNumberFormat('dd/MM/yyyy HH:mm');
+  } finally {
+    lock.releaseLock();
+  }
+  return { ok: true, code: code };
+}
+
+function getProposal_(req) {
+  var code = String(req.code || '');
+  if (!/^[a-z0-9-]{6,40}$/.test(code)) return { ok: false, error: 'bad_code' };
+  var sh = propSheet_();
+  var cell = sh.getRange('B:B').createTextFinder(code).matchEntireCell(true).findNext();
+  if (!cell) return { ok: false, error: 'not_found' };
+  var r = cell.getRow();
+  if (req.countOpen) {
+    sh.getRange(r, 8).setValue((Number(sh.getRange(r, 8).getValue()) || 0) + 1);
+    sh.getRange(r, 9).setValue(new Date()).setNumberFormat('dd/MM/yyyy HH:mm');
+  }
+  return { ok: true, json: String(sh.getRange(r, 10).getValue()) };
 }
 
 function doGet() {

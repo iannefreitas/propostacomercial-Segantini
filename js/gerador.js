@@ -1,5 +1,6 @@
 /* Gerador de links de proposta personalizada (uso interno do comercial).
-   Monta o parâmetro #p= que a apresentação (js/app.js) lê para se personalizar. */
+   Salva a proposta na planilha (via /api/proposta) e devolve um link curto /p/<código>.
+  A pré-visualização usa o link longo (#p=), que não grava nada. */
 (function () {
   "use strict";
   const C = window.SEGANTINI;
@@ -96,40 +97,71 @@
   }
 
   let lastEmpresa = "";
-  function update() {
+  let current = null; // proposta montada a partir do formulário
+  let shortLink = "";
+  function build() {
     const empresa = $("#g-empresa").value.trim();
     const nome = $("#g-nome").value.trim();
-    const vendedor = $("#g-vendedor").value.trim();
-    const msg = $("#g-msg").value.trim();
-    $("#g-cc").textContent = $("#g-msg").value.length;
     if (empresa !== lastEmpresa) { id = empresa ? newId() : ""; lastEmpresa = empresa; }
-    const ok = !!empresa;
     const pick = (kind) => [...sel[kind]].map((x) => lib[kind].find((i) => i.id === x)).filter(Boolean);
     const obj = {
-      n: nome, e: empresa, v: vendedor, m: msg, id,
+      n: nome, e: empresa, v: $("#g-vendedor").value.trim(), m: $("#g-msg").value.trim(), id,
       d: [...sel.d].filter((x) => !isCustom(x)), s: [...sel.s].filter((x) => !isCustom(x)),
       cd: pick("d").map((i) => [i.titulo, i.texto]),
       cs: pick("s").map((i) => [i.nome, i.descricao, i.problema, i.resultado]),
     };
     Object.entries(F).forEach(([k, sel]) => (obj[k] = v(sel)));
-    const ent = $("#g-ent").value.split("\n").map((x) => x.replace(/^[\s•\-*]+/, "").trim()).filter(Boolean).slice(0, 12);
-    obj.ent = ent;
+    obj.ent = $("#g-ent").value.split("\n").map((x) => x.replace(/^[\s•\-*]+/, "").trim()).filter(Boolean).slice(0, 12);
     Object.keys(obj).forEach((k) => (obj[k] === "" || (Array.isArray(obj[k]) && !obj[k].length)) && delete obj[k]);
-    const link = ok ? `${location.origin}/#p=${encode(obj)}` : "";
-    $("#g-link").value = link;
-    $("#g-id").textContent = id || "—";
-    $("#g-preview").href = link || "#";
-    const first = nome.split(/\s+/)[0];
-    const text = `Olá${first ? `, ${first}` : ""}! Conforme conversamos, preparei a proposta da Segantini para a ${empresa}. É rápida e interativa: ${link}`;
-    $("#g-wa").href = ok ? `https://wa.me/${phone()}?text=${encodeURIComponent(text)}` : "#";
-    ["#g-copy", "#g-preview", "#g-wa"].forEach((s) => $(s).classList.toggle("is-off", !ok));
-    $("#g-hint").textContent = ok
-      ? "No final, o botão “Quero avançar” abre o WhatsApp do comercial com o nome, a empresa e este código."
-      : "Preencha ao menos a empresa para gerar o link.";
-    const chk = [["Empresa", empresa], ["Solução recomendada", v("#g-sol")], ["Entregáveis", ent.length], ["Valor", v("#g-val")], ["Forma de pagamento", v("#g-pg")]];
+    return obj;
+  }
+  function update() {
+    $("#g-cc").textContent = $("#g-msg").value.length;
+    current = build();
+    const ok = !!current.e;
+    $("#g-preview").href = ok ? `${location.origin}/#p=${encode(current)}` : "#";
+    $("#g-preview").classList.toggle("is-off", !ok);
+    $("#g-gen").disabled = !ok;
+    // Se algo mudou depois de gerar, o link curto antigo não reflete mais o formulário
+    if (shortLink) {
+      $("#g-result").classList.add("is-stale");
+      $("#g-gen").textContent = "Gerar novo link (houve alterações)";
+    }
+    $("#g-hint").textContent = ok ? "Pré-visualize, confira e clique em “Gerar link curto”." : "Preencha ao menos a empresa para gerar o link.";
+    const chk = [["Empresa", current.e], ["Solução recomendada", current.sol], ["Entregáveis", (current.ent || []).length], ["Valor", current.val], ["Forma de pagamento", current.pg]];
     $("#g-check").innerHTML = chk.map(([t, x]) => `<span class="${x ? "ok" : ""}">${t}</span>`).join("");
   }
-  ["#g-nome", "#g-empresa", "#g-vendedor", "#g-fone", "#g-msg", "#g-ent", ...Object.values(F)].forEach((s) => $(s).addEventListener("input", update));
+  function waHref() {
+    const first = (current.n || "").split(/\s+/)[0];
+    const text = `Olá${first ? `, ${first}` : ""}! Conforme conversamos, preparei a proposta da Segantini para a ${current.e}: ${shortLink}`;
+    $("#g-wa").href = `https://wa.me/${phone()}?text=${encodeURIComponent(text)}`;
+  }
+  async function generate() {
+    const btn = $("#g-gen");
+    btn.disabled = true; btn.textContent = "Gerando…";
+    let j = {};
+    try {
+      const r = await fetch("/api/proposta", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ data: current }) });
+      j = await r.json();
+    } catch {}
+    btn.disabled = false; btn.textContent = "Gerar link curto";
+    if (!j.ok) {
+      toast(j.error === "not_configured" || j.error === "sheet_error" || j.error === "bad_upstream"
+        ? "A planilha ainda não aceita propostas — atualize o Apps Script (ver README)."
+        : "Não foi possível gerar o link agora. Tente de novo.");
+      return;
+    }
+    shortLink = `${location.origin}/p/${j.code}`;
+    $("#g-link").value = shortLink;
+    $("#g-result").hidden = false;
+    $("#g-result").classList.remove("is-stale");
+    waHref();
+    hist({ id: j.code, empresa: current.e, link: shortLink, data: new Date().toLocaleDateString("pt-BR") });
+    toast("Link curto gerado!");
+  }
+  $("#g-gen").addEventListener("click", generate);
+  ["#g-nome", "#g-empresa", "#g-vendedor", "#g-msg", "#g-ent", ...Object.values(F)].forEach((s) => $(s).addEventListener("input", update));
+  $("#g-fone").addEventListener("input", () => { if (shortLink) waHref(); });
 
   // Vendedor lembrado neste navegador
   try { $("#g-vendedor").value = localStorage.getItem("seg_vendedor") || ""; } catch {}
@@ -145,17 +177,11 @@
       : '<li class="muted">Nenhum ainda.</li>';
     $("#g-hist").onclick = (e) => { const b = e.target.closest("button[data-k]"); if (b) copy(h[+b.dataset.k].link); };
   }
-  function save() {
-    const link = $("#g-link").value;
-    if (link) hist({ id, empresa: $("#g-empresa").value.trim(), link, data: new Date().toLocaleDateString("pt-BR") });
-  }
   async function copy(t) {
     try { await navigator.clipboard.writeText(t); } catch { $("#g-link").select(); document.execCommand("copy"); }
     toast("Link copiado!");
   }
-  $("#g-copy").addEventListener("click", () => { copy($("#g-link").value); save(); });
-  $("#g-wa").addEventListener("click", save);
-  $("#g-preview").addEventListener("click", save);
+  $("#g-copy").addEventListener("click", () => copy($("#g-link").value));
 
   let tt;
   function toast(m) { const t = $("#toast"); t.textContent = m; t.classList.add("on"); clearTimeout(tt); tt = setTimeout(() => t.classList.remove("on"), 2000); }

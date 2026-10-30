@@ -24,7 +24,8 @@ js/content.js              ← TODO O CONTEÚDO EDITÁVEL (textos, desafios, sol
 js/app.js                  navegação, interações e envio
 css/styles.css             visual (cores da marca no topo do arquivo, em :root)
 assets/                    logo oficial, símbolo, foto e imagem de prévia do link
-api/lead.js                função da Vercel que recebe as respostas e repassa ao Google
+api/lead.js                função da Vercel que recebe os contatos e repassa ao Google
+api/proposta.js            função da Vercel que salva/busca propostas (link curto /p/<código>)
 google-apps-script/Code.gs script que grava na planilha
 vercel.json                cabeçalhos de segurança
 ```
@@ -63,9 +64,13 @@ No gerador, o vendedor preenche:
 Campos vazios simplesmente não aparecem. Sem nada nas seções 4/5, a tela correspondente é pulada.
 O botão final "Quero avançar" abre o WhatsApp do comercial com nome, empresa, código e solução.
 
-Privacidade: os dados ficam no próprio link, depois do `#` — essa parte não é enviada ao servidor,
-não aparece em logs e não é gravada em planilha. Quem tiver o link vê a proposta (como um PDF enviado).
-O histórico de links gerados fica só no navegador de quem gerou.
+**Link curto:** ao clicar em "Gerar link curto", a proposta é salva na aba **Propostas** da planilha e o
+vendedor recebe um link como `apresentacao-segantini.vercel.app/p/paguemenos-mz6jt2mx`. Na aba Propostas
+aparecem empresa, gestor, vendedor, solução, valor, **nº de aberturas** e **data da última abertura**.
+Se alterar algo depois de gerar, gere um novo link (o antigo continua mostrando a versão anterior).
+"Pré-visualizar" mostra a proposta sem salvar nada. Links antigos (`/#p=...`) continuam funcionando.
+
+Requer o `Code.gs` atualizado (com `saveProposal`/`getProposal`) implantado como nova versão.
 
 ## Google Sheets — configuração (uma única vez, ~10 min)
 

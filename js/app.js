@@ -1,7 +1,7 @@
 /* Segantini · Apresentação comercial interativa
    Lógica de navegação, interações e envio das respostas.
    O conteúdo (textos, desafios, soluções, depoimentos) fica em js/content.js. */
-(function () {
+(async function () {
   "use strict";
 
   const C = window.SEGANTINI;
@@ -67,12 +67,37 @@
      d (ids de desafios), s (ids de soluções em destaque),
      ctx/dor/obj ("O seu momento"), sol (serviço), ent (entregáveis), pr/cad/resp ("Como acontece"),
      pl/val/per/tx/oc (investimento), pg/ini/vd (condições). */
+  // Link curto /p/<código>: a proposta fica guardada na planilha e é buscada aqui.
+  // Links antigos (#p= / ?p=) trazem a proposta inteira codificada no próprio link.
+  const shortCode = (location.pathname.match(/^\/p\/([a-z0-9-]{6,40})\/?$/i) || [])[1];
+  let RAW = null;
+  if (shortCode) {
+    $("#app").innerHTML = '<section class="screen screen--dark hero"><div class="wrap"><p class="lead">Carregando sua proposta…</p></div></section>';
+    document.body.classList.add("is-dark", "is-hero");
+    $("#navbar").classList.add("is-hidden");
+    try {
+      const r = await fetch(`/api/proposta?c=${encodeURIComponent(shortCode.toLowerCase())}${params.get("preview") ? "&preview=1" : ""}`);
+      const j = await r.json();
+      if (j.ok) RAW = j.data;
+    } catch {}
+    if (!RAW) {
+      $("#app").innerHTML = `<section class="screen screen--dark hero"><div class="wrap">
+        <h1 class="h1">Não encontramos <em>esta proposta.</em></h1>
+        <p class="lead">O link pode estar incompleto. Fale com o nosso time que enviamos de novo.</p>
+        <a class="btn btn--wa btn--lg" href="https://wa.me/${C.contato.whatsapp}?text=${encodeURIComponent("Olá! Tentei abrir a proposta da Segantini, mas o link não funcionou: " + location.href)}">Falar no WhatsApp</a>
+      </div></section>`;
+      return;
+    }
+  }
   const PROP = (() => {
     try {
-      const raw = new URLSearchParams(location.hash.slice(1)).get("p") || params.get("p");
-      if (!raw) return null;
-      const bin = atob(raw.replace(/-/g, "+").replace(/_/g, "/"));
-      const o = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0))));
+      let o = RAW;
+      if (!o) {
+        const raw = new URLSearchParams(location.hash.slice(1)).get("p") || params.get("p");
+        if (!raw) return null;
+        const bin = atob(raw.replace(/-/g, "+").replace(/_/g, "/"));
+        o = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0))));
+      }
       const txt = (v, max) => (typeof v === "string" ? v.trim().slice(0, max) : "");
       const ids = (v, map) => (Array.isArray(v) ? v.filter((x) => map[x]).slice(0, 13) : []);
       // Desafios/soluções criados no gerador (cd/cs) entram nas listas desta visita
