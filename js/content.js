@@ -243,30 +243,7 @@ window.SEGANTINI = {
     "Insight Psicologia", "SCI", "We Lov", "MJOliveira", "Turquesa",
   ],
 
-  /* ---------------- ETAPA 5 — DIAGNÓSTICO ---------------- */
-  perguntas: {
-    porte: {
-      titulo: "Quantos colaboradores sua empresa possui hoje?",
-      opcoes: ["Até 10", "De 11 a 30", "De 31 a 60", "De 61 a 100", "Mais de 100"],
-    },
-    rh: {
-      titulo: "Sua empresa possui um RH estruturado?",
-      opcoes: [
-        "Sim, temos um setor de RH",
-        "Temos uma pessoa responsável, mas não um setor estruturado",
-        "Não temos uma estrutura de RH",
-        "Temos RH terceirizado",
-      ],
-    },
-    desafios: { titulo: "Quais são hoje seus principais desafios na gestão de pessoas?" },
-    solucoes: { titulo: "Quais soluções despertaram mais interesse?" },
-    melhoria: {
-      titulo: "O que sua empresa mais gostaria de melhorar na gestão de pessoas hoje?",
-      placeholder: "Opcional — conte em poucas palavras",
-    },
-  },
-
-  /* ---------------- ETAPA 6 — PRÓXIMO PASSO ---------------- */
+  /* ---------------- ETAPA "VAMOS COMEÇAR?" ---------------- */
   proximosPassos: [
     { titulo: "Escolha do caminho", texto: "Solução e formato ideais para o seu momento." },
     { titulo: "Aceite formal", texto: "Agendamos o briefing com a direção." },

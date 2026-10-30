@@ -30,11 +30,29 @@
         <div class="field"><label for="g-fone">WhatsApp do gestor <span>(opcional)</span></label><input id="g-fone" inputmode="tel" maxlength="20" placeholder="(84) 9 9999-9999" /></div>
       </div>
 
-      <p class="eyebrow">2 · Desafios que vocês já conversaram <span class="gen__opt">(chegam pré-marcados)</span></p>
+      <p class="eyebrow">2 · Desafios que vocês já conversaram <span class="gen__opt">(chegam pré-marcados · os itens que você criar têm × para excluir)</span></p>
       <div class="gen__chips" id="g-desafios"></div>
+      <details class="gen__add">
+        <summary>+ Adicionar outro desafio</summary>
+        <div class="form__row">
+          <div class="field"><label for="g-nd-t">Desafio</label><input id="g-nd-t" maxlength="80" placeholder="Ex.: Turnover alto na loja nova" /></div>
+          <div class="field"><label for="g-nd-x">Descrição curta <span>(opcional)</span></label><input id="g-nd-x" maxlength="140" placeholder="Ex.: 4 desligamentos em 3 meses" /></div>
+        </div>
+        <button type="button" class="btn btn--outline" id="g-add-d">Adicionar desafio</button>
+      </details>
 
-      <p class="eyebrow">3 · Soluções a destacar <span class="gen__opt">(até 4, aparecem primeiro)</span></p>
+      <p class="eyebrow">3 · Soluções a destacar <span class="gen__opt">(até 6, aparecem primeiro e abertas)</span></p>
       <div class="gen__chips" id="g-solucoes"></div>
+      <details class="gen__add">
+        <summary>+ Adicionar outra solução</summary>
+        <div class="form__row">
+          <div class="field"><label for="g-ns-n">Nome da solução</label><input id="g-ns-n" maxlength="80" placeholder="Ex.: Onboarding estruturado" /></div>
+          <div class="field"><label for="g-ns-d">Descrição curta</label><input id="g-ns-d" maxlength="140" placeholder="Ex.: Integração de novos colaboradores" /></div>
+        </div>
+        <div class="field"><label for="g-ns-p">Ajuda a resolver <span>(opcional)</span></label><input id="g-ns-p" maxlength="240" /></div>
+        <div class="field"><label for="g-ns-r">O que muda <span>(opcional)</span></label><input id="g-ns-r" maxlength="240" /></div>
+        <button type="button" class="btn btn--outline" id="g-add-s">Adicionar solução</button>
+      </details>
 
       <p class="eyebrow">4 · Mensagem de abertura <span class="gen__opt">(opcional)</span></p>
       <div class="field">

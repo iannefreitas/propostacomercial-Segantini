@@ -49,19 +49,14 @@
     i: 0,
     desafios: new Set(),
     interesse: new Set(),
-    porte: "",
-    rh: "",
-    diagDesafios: null, // inicializado a partir da etapa 2
-    diagSolucoes: null, // inicializado a partir da etapa 3
-    melhoria: "",
     nome: "", empresa: "", contato: "", consent: false, hp: "",
-    sendStatus: null, // "ok" | "fail" | null (só no fluxo padrão)
+    sendStatus: null, // "ok" | "fail" | null — envio do contato (link padrão)
     t0: Date.now(),
     vendedor: (params.get("v") || params.get("vendedor") || "").slice(0, 60),
     origem: (params.get("utm_source") || params.get("origem") || "").slice(0, 60),
   };
 
-  let STEPS = ["Conheça", "Desafios", "Soluções", "Clientes", "Sua empresa", "Próximo passo"];
+  let STEPS = []; // definido junto com as telas finais
   const solById = Object.fromEntries(C.solucoes.map((s) => [s.id, s]));
   const desById = Object.fromEntries(C.desafios.map((d) => [d.id, d]));
 
@@ -80,11 +75,17 @@
       const o = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0))));
       const txt = (v, max) => (typeof v === "string" ? v.trim().slice(0, max) : "");
       const ids = (v, map) => (Array.isArray(v) ? v.filter((x) => map[x]).slice(0, 13) : []);
+      // Desafios/soluções criados no gerador (cd/cs) entram nas listas desta visita
+      const arr = (v, n) => (Array.isArray(v) ? v : []).filter(Array.isArray).slice(0, n);
+      const cd = arr(o.cd, 8).map((x, k) => ({ id: "cd" + k, icone: "sparkle", titulo: txt(x[0], 80), texto: txt(x[1], 140), solucoes: [] })).filter((x) => x.titulo);
+      const cs = arr(o.cs, 6).map((x, k) => ({ id: "cs" + k, icone: "sparkle", nome: txt(x[0], 80), descricao: txt(x[1], 140), problema: txt(x[2], 240), resultado: txt(x[3], 240) })).filter((x) => x.nome);
+      cd.forEach((d) => { C.desafios.push(d); desById[d.id] = d; });
+      cs.forEach((x) => { C.solucoes.push(x); solById[x.id] = x; });
       const lines = (v) => (Array.isArray(v) ? v : []).map((x) => txt(x, 200)).filter(Boolean).slice(0, 12);
       const r = {
         nome: txt(o.n, 80), empresa: txt(o.e, 100), vendedor: txt(o.v, 60),
         msg: txt(o.m, 400), id: txt(o.id, 30).replace(/[^\w-]/g, ""),
-        desafios: ids(o.d, desById), solucoes: ids(o.s, solById).slice(0, 4),
+        desafios: [...ids(o.d, desById), ...cd.map((x) => x.id)], solucoes: [...ids(o.s, solById), ...cs.map((x) => x.id)].slice(0, 10),
         contexto: txt(o.ctx, 300), dor: txt(o.dor, 300), objetivo: txt(o.obj, 300),
         servico: txt(o.sol, 120), entregaveis: lines(o.ent),
         prazo: txt(o.pr, 160), cadencia: txt(o.cad, 200), responsavel: txt(o.resp, 160),
@@ -224,15 +225,15 @@
           <p class="lead">${forced.length ? "Destacamos primeiro o que recomendamos para o seu momento." : recSet.size ? "Destacamos primeiro as soluções ligadas aos desafios que você marcou." : "Conheça as soluções da Segantini."} Toque em uma solução para ver o que ela resolve e marque as que fizerem sentido.</p>
           <div class="sol-grid">
             ${ordered.map((s, k) => `
-              <article class="sol ${recSet.has(s.id) ? "is-rec" : ""} ${k === 0 ? "is-open" : ""}" data-sol="${esc(s.id)}" style="animation-delay:${0.04 * k}s">
-                <button type="button" class="sol__head" aria-expanded="${k === 0}">
+              <article class="sol ${recSet.has(s.id) ? "is-rec is-open" : !recSet.size && k === 0 ? "is-open" : ""}" data-sol="${esc(s.id)}" style="animation-delay:${0.04 * k}s">
+                <button type="button" class="sol__head" aria-expanded="${recSet.has(s.id) || (!recSet.size && k === 0)}">
                   <span class="ico">${ico(s.icone)}</span>
                   <span>${recSet.has(s.id) ? `<span class="sol__tag">${esc(tag)}</span>` : ""}<h3>${esc(s.nome)}</h3><p>${esc(s.descricao)}</p></span>
                   <span class="chev">${ico("chevron")}</span>
                 </button>
                 <div class="sol__body"><div><div class="sol__rows">
-                  <div class="sol__row sol__row--prob"><b>Ajuda a resolver</b>${esc(s.problema)}</div>
-                  <div class="sol__row sol__row--res"><b>O que muda</b>${esc(s.resultado)}</div>
+                  ${s.problema ? `<div class="sol__row sol__row--prob"><b>Ajuda a resolver</b>${esc(s.problema)}</div>` : ""}
+                  ${s.resultado ? `<div class="sol__row sol__row--res"><b>O que muda</b>${esc(s.resultado)}</div>` : ""}
                   <button type="button" class="sol__like" data-like="${esc(s.id)}" aria-pressed="${state.interesse.has(s.id)}">${ico("heart")} <span>${state.interesse.has(s.id) ? "Tenho interesse" : "Marcar interesse"}</span></button>
                 </div></div></div>
               </article>`).join("")}
@@ -309,237 +310,157 @@
           <p class="muted">Transcrições fiéis das avaliações públicas no Google e dos depoimentos da apresentação institucional. Trechos entre [colchetes] foram ajustados apenas para leitura.</p>
           <div class="modal-list">${C.depoimentos.map((d) => quoteCard(d, true)).join("")}</div>`);
       },
-      hint: () => (PROP ? (PROP.temSolucao ? `Próximo: a solução para ${PROP.empresa || "você"}` : "Próximo: vamos começar") : "Próximo: sua empresa"),
-    },
-    /* 5 — Porte */
-    {
-      step: 4, auto: true,
-      render() {
-        const q = C.perguntas.porte;
-        return questionShell(1, q.titulo, "Escolha uma opção.", `
-          <div class="options options--grid">${q.opcoes.map((o, k) => optBtn("porte", o, state.porte === o, false, k)).join("")}</div>`);
-      },
-      mount(el) { bindSingle(el, "porte"); },
-      canNext: () => !!state.porte,
-      hint: () => state.porte ? { t: "Registrado ✓", ok: true } : "Selecione uma opção",
-    },
-    /* 6 — RH */
-    {
-      step: 4, auto: true,
-      render() {
-        const q = C.perguntas.rh;
-        return questionShell(2, q.titulo, "Escolha uma opção.", `
-          <div class="options">${q.opcoes.map((o, k) => optBtn("rh", o, state.rh === o, false, k)).join("")}</div>`);
-      },
-      mount(el) { bindSingle(el, "rh"); },
-      canNext: () => !!state.rh,
-      hint: () => state.rh ? { t: "Registrado ✓", ok: true } : "Selecione uma opção",
-    },
-    /* 7 — Desafios (confirmação) */
-    {
-      step: 4,
-      enter() { if (!state.diagDesafios) state.diagDesafios = new Set(state.desafios); },
-      render() {
-        const pre = state.desafios.size > 0;
-        return questionShell(3, C.perguntas.desafios.titulo, "Marque quantos quiser.", `
-          ${pre ? `<p class="prefill-note">${ico("check")} Já trouxemos o que você marcou antes. Confirme ou ajuste.</p>` : ""}
-          <div class="options options--grid">${C.desafios.map((d, k) => optBtn("dd", d.titulo, state.diagDesafios.has(d.id), true, k, d.id)).join("")}</div>`);
-      },
-      mount(el) { bindMulti(el, "dd", state.diagDesafios); },
-      canNext: () => state.diagDesafios && state.diagDesafios.size > 0,
-      hint: () => state.diagDesafios?.size ? { t: `${state.diagDesafios.size} selecionado(s)`, ok: true } : "Selecione ao menos um",
-    },
-    /* 8 — Soluções de interesse */
-    {
-      step: 4,
-      enter() {
-        if (!state.diagSolucoes) {
-          state.diagSolucoes = new Set(state.interesse);
-        }
-      },
-      render() {
-        const rec = new Set(recomendadas(state.diagDesafios || state.desafios).slice(0, 3));
-        return questionShell(4, C.perguntas.solucoes.titulo, "Marque quantas quiser.", `
-          ${state.interesse.size ? `<p class="prefill-note">${ico("heart")} Trouxemos as soluções que você marcou. Confirme ou ajuste.</p>` : ""}
-          <div class="options options--grid">${C.solucoes.map((s, k) => optBtn("ds", s.nome + (rec.has(s.id) ? '<small>Sugerida pelos seus desafios</small>' : ""), state.diagSolucoes.has(s.id), true, k, s.id, true)).join("")}
-          ${optBtn("ds", "Ainda não sei — quero orientação", state.diagSolucoes.has("orientacao"), true, C.solucoes.length, "orientacao")}</div>`);
-      },
-      mount(el) { bindMulti(el, "ds", state.diagSolucoes); },
-      canNext: () => state.diagSolucoes && state.diagSolucoes.size > 0,
-      hint: () => state.diagSolucoes?.size ? { t: `${state.diagSolucoes.size} selecionada(s)`, ok: true } : "Selecione ao menos uma",
-    },
-    /* 9 — Melhoria + contato */
-    {
-      step: 4, nextLabel: "Enviar e concluir",
-      render() {
-        const q = C.perguntas.melhoria;
-        const chips = [state.porte && `${state.porte} colaboradores`, state.rh, ...[...(state.diagDesafios || [])].slice(0, 3).map((id) => desById[id]?.titulo)].filter(Boolean);
-        return questionShell(5, q.titulo, "", `
-          <div class="summary-chips">${chips.map((c) => `<span>${esc(c)}</span>`).join("")}</div>
-          <form class="form" id="leadForm" novalidate>
-            <div class="field">
-              <label for="f-melhoria">Sua percepção <span>(opcional)</span></label>
-              <textarea id="f-melhoria" maxlength="600" placeholder="${esc(q.placeholder)}">${esc(state.melhoria)}</textarea>
-              <div class="char"><span id="cc">${state.melhoria.length}</span>/600</div>
-            </div>
-            <p class="eyebrow" style="margin:8px 0 0">Para quem enviamos o retorno?</p>
-            <div class="form__row">
-              <div class="field" id="fw-nome"><label for="f-nome">Seu nome</label><input id="f-nome" autocomplete="name" maxlength="80" value="${esc(state.nome)}" /><div class="field__err">Informe seu nome</div></div>
-              <div class="field" id="fw-empresa"><label for="f-empresa">Empresa</label><input id="f-empresa" autocomplete="organization" maxlength="100" value="${esc(state.empresa)}" /><div class="field__err">Informe o nome da empresa</div></div>
-            </div>
-            <div class="field"><label for="f-contato">WhatsApp ou e-mail <span>(opcional)</span></label><input id="f-contato" inputmode="email" autocomplete="tel" maxlength="100" value="${esc(state.contato)}" placeholder="(84) 9 9999-9999 ou nome@empresa.com" /></div>
-            <div class="hp" aria-hidden="true"><label>Website<input id="f-web" tabindex="-1" autocomplete="off" /></label></div>
-            <label class="consent" id="fw-consent"><input type="checkbox" id="f-consent" ${state.consent ? "checked" : ""} /> <span>Autorizo a Segantini a usar estas respostas para entrar em contato e preparar uma proposta para minha empresa. Os dados não são compartilhados com terceiros.</span></label>
-          </form>`);
-      },
-      mount(el) {
-        const bind = (id, key) => $(id, el).addEventListener("input", (e) => { state[key] = e.target.value; $(id, el).closest(".field")?.classList.remove("has-error"); updateNav(); });
-        bind("#f-melhoria", "melhoria"); bind("#f-nome", "nome"); bind("#f-empresa", "empresa"); bind("#f-contato", "contato");
-        $("#f-melhoria", el).addEventListener("input", () => ($("#cc", el).textContent = state.melhoria.length));
-        $("#f-web", el).addEventListener("input", (e) => (state.hp = e.target.value));
-        $("#f-consent", el).addEventListener("change", (e) => { state.consent = e.target.checked; updateNav(); });
-        $("#leadForm", el).addEventListener("submit", (e) => { e.preventDefault(); next(); });
-      },
-      canNext: () => state.nome.trim().length > 1 && state.empresa.trim().length > 1 && state.consent,
-      hint() {
-        if (this.canNext()) return { t: "Tudo pronto para enviar", ok: true };
-        return state.nome.trim() && state.empresa.trim() ? "Marque a autorização para enviar" : "Nome e empresa são obrigatórios";
-      },
-      async beforeNext(el) {
-        if (!this.canNext()) {
-          if (state.nome.trim().length < 2) $("#fw-nome", el).classList.add("has-error");
-          if (state.empresa.trim().length < 2) $("#fw-empresa", el).classList.add("has-error");
-          return false;
-        }
-        await submit();
-        return true;
-      },
-    },
-    /* 10 — Próximo passo */
-    {
-      step: 5, dark: true, final: true,
-      render() {
-        const first = esc(state.nome.trim().split(/\s+/)[0] || "");
-        const recIds = [...new Set([...(PROP ? PROP.solucoes : []), ...[...(state.diagSolucoes || [])].filter((id) => solById[id]), ...recomendadas(state.diagDesafios || state.desafios)])].slice(0, 3);
-        const badge = state.sendStatus === "ok"
-          ? `<span class="success-badge">${ico("check")} Respostas recebidas pelo nosso time</span>`
-          : `<span class="success-badge is-warn">${ico("message")} Não conseguimos registrar automaticamente — envie pelo WhatsApp abaixo</span>`;
-        return `
-        <section class="screen screen--dark"><div class="wrap final">
-          <div>
-            ${badge}
-            <p class="eyebrow">Etapa 6 · Próximo passo</p>
-            <h2 class="h1">Obrigado${first ? `, ${first}` : ""}! <em>Cada empresa tem uma realidade.</em></h2>
-            <p class="lead">Por isso não trabalhamos com pacote pronto. Com o que você nos contou, vamos construir junto com você um caminho adequado ao momento da ${esc(state.empresa) || "sua empresa"}.</p>
-            ${recIds.length ? `<p class="eyebrow" style="margin-top:6px">Um bom ponto de partida</p>
-            <div class="rec-list">${recIds.map((id, k) => `<div class="rec" style="animation-delay:${0.1 * k}s"><span class="ico">${ico(solById[id].icone)}</span><div><h4>${esc(solById[id].nome)}</h4><p>${esc(solById[id].resultado)}</p></div></div>`).join("")}</div>` : ""}
-            <ol class="steps">${C.proximosPassos.map((p) => `<li><div><strong>${esc(p.titulo)}</strong><span>${esc(p.texto)}</span></div></li>`).join("")}</ol>
-          </div>
-          <aside class="contact-card">
-            <p class="eyebrow" style="margin:0">Vamos conversar?</p>
-            <p style="margin:0;color:rgba(255,255,255,.85);font-size:15px">Fale agora com o nosso time comercial e dê o primeiro passo.</p>
-            <a class="btn btn--wa btn--lg" href="${waLink(recIds)}" target="_blank" rel="noopener">${WA_SVG} Conversar no WhatsApp</a>
-            <a class="plain" href="mailto:${esc(C.contato.email)}">${ico("mail")} ${esc(C.contato.email)}</a>
-            <a class="plain" href="${esc(C.contato.site)}" target="_blank" rel="noopener">${ico("globe")} ${esc(C.contato.siteExibicao)}</a>
-            <img class="final__logo" src="/assets/logo-segantini-branca.png" alt="Segantini Psicologia Empresarial" />
-          </aside>
-        </div></section>`;
-      },
-      hint: () => "",
+      hint: () => (PROP && !PROP.temSolucao ? "Próximo: vamos começar" : "Próximo: a sua solução"),
     },
   ];
 
-  /* ---------------- Telas da proposta personalizada ----------------
-     Com um link de proposta, o diagnóstico (Sua empresa) e o Próximo passo
-     dão lugar a: A solução para X → Investimento e condições → Vamos começar? */
-  if (PROP) {
-    const pScreens = [];
-    const emp = PROP.empresa || "sua empresa";
-    if (PROP.temSolucao) pScreens.push({
-      key: "solucao",
-      render() {
-        const known = C.solucoes.find((x) => x.nome.toLowerCase() === PROP.servico.toLowerCase());
-        const momento = [PROP.contexto, PROP.dor, PROP.objetivo].filter(Boolean);
-        const marcados = [...state.desafios].map((id) => desById[id]?.titulo).filter(Boolean);
-        const como = [["Prazo", PROP.prazo], ["Cadência", PROP.cadencia], ["Responsável Segantini", PROP.responsavel]].filter((x) => x[1]);
-        return `
-        <section class="screen"><div class="wrap">
-          <p class="eyebrow">Proposta personalizada</p>
-          <h2 class="h1">A solução para <em>${esc(emp)}</em></h2>
-          <div class="prop">
-            <div class="prop__moment">
-              <p class="eyebrow">O seu momento</p>
-              ${momento.length ? `<ul>${momento.map((m) => `<li>${esc(m)}</li>`).join("")}</ul>` : ""}
-              ${marcados.length ? `<p class="prop__sub">Desafios que você marcou</p><div class="prop__chips">${marcados.map((t) => `<span>${esc(t)}</span>`).join("")}</div>` : ""}
-            </div>
-            <div class="prop__sol">
-              <p class="eyebrow">Solução recomendada</p>
-              ${PROP.servico ? `<h3 class="prop__name">${esc(PROP.servico)}</h3>` : ""}
-              ${known ? `<p class="prop__desc">${esc(known.resultado)}</p>` : ""}
-              <div class="prop__cols">
-                ${PROP.entregaveis.length ? `<div><p class="prop__label">Entregáveis</p><ul class="prop__list">${PROP.entregaveis.map((e) => `<li>${ico("check")}<span>${esc(e)}</span></li>`).join("")}</ul></div>` : ""}
-                ${como.length ? `<div><p class="prop__label">Como acontece</p><dl class="prop__how">${como.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl></div>` : ""}
-              </div>
-            </div>
+  /* ---------------- Telas finais (link padrão e proposta) ----------------
+     5 · A solução para {empresa}: na proposta, preenchida no /gerador; no link padrão,
+         montada a partir dos desafios e soluções que o lead marcou.
+     6 · Investimento e condições: só na proposta (quando há valor/condições).
+     7 · Vamos começar?: no link padrão, contato opcional que vai para a planilha. */
+  const empresaNome = () => (PROP && PROP.empresa) || state.empresa.trim();
+  const recIds = () => [...new Set([...(PROP ? PROP.solucoes : []), ...state.interesse, ...recomendadas()])].filter((id) => solById[id]);
+  const finals = [];
+
+  if (!PROP || PROP.temSolucao) finals.push({
+    key: "solucao",
+    render() {
+      const P2 = PROP || {};
+      const known = P2.servico && C.solucoes.find((x) => x.nome.toLowerCase() === P2.servico.toLowerCase());
+      const momento = [P2.contexto, P2.dor, P2.objetivo].filter(Boolean);
+      const marcados = [...state.desafios].map((id) => desById[id]?.titulo).filter(Boolean);
+      const como = [["Prazo", P2.prazo], ["Cadência", P2.cadencia], ["Responsável Segantini", P2.responsavel]].filter((x) => x[1]);
+      const recs = recIds().slice(0, 3);
+      const right = P2.servico || (P2.entregaveis || []).length
+        ? `<p class="eyebrow">Solução recomendada</p>
+           ${P2.servico ? `<h3 class="prop__name">${esc(P2.servico)}</h3>` : ""}
+           ${known ? `<p class="prop__desc">${esc(known.resultado)}</p>` : ""}
+           <div class="prop__cols">
+             ${P2.entregaveis.length ? `<div><p class="prop__label">Entregáveis</p><ul class="prop__list">${P2.entregaveis.map((e) => `<li>${ico("check")}<span>${esc(e)}</span></li>`).join("")}</ul></div>` : ""}
+             ${como.length ? `<div><p class="prop__label">Como acontece</p><dl class="prop__how">${como.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl></div>` : ""}
+           </div>`
+        : `<p class="eyebrow">${recs.length ? "Soluções recomendadas" : "Solução recomendada"}</p>
+           ${recs.length ? `<div class="prop__recs">${recs.map((id) => `<div class="prop__rec"><span class="ico">${ico(solById[id].icone)}</span><div><h4>${esc(solById[id].nome)}</h4><p>${esc(solById[id].resultado || solById[id].descricao)}</p></div></div>`).join("")}</div>`
+             : `<p class="prop__desc">Volte à etapa 2 e marque os desafios da sua empresa para ver a recomendação.</p>`}
+           <div class="prop__note">${ico("sparkle")}<span>Cada empresa tem uma realidade: entregáveis, prazo e investimento são definidos junto com você, na proposta personalizada.</span></div>`;
+      return `
+      <section class="screen"><div class="wrap">
+        <p class="eyebrow">${PROP ? "Proposta personalizada" : "Etapa 5 · Sua solução"}</p>
+        <h2 class="h1">A solução para <em>${esc(empresaNome() || "sua empresa")}</em></h2>
+        <div class="prop">
+          <div class="prop__moment">
+            <p class="eyebrow">O seu momento</p>
+            ${momento.length ? `<ul>${momento.map((m) => `<li>${esc(m)}</li>`).join("")}</ul>` : ""}
+            ${marcados.length ? `<p class="prop__sub">${momento.length ? "Desafios que você marcou" : "Os desafios que você marcou"}</p><div class="prop__chips">${marcados.map((t) => `<span>${esc(t)}</span>`).join("")}</div>`
+              : momento.length ? "" : `<p class="prop__empty">Você ainda não marcou desafios.</p>`}
           </div>
-        </div></section>`;
-      },
-      hint: () => (PROP.temInvest ? "Próximo: investimento e condições" : "Próximo: vamos começar"),
-    });
-    if (PROP.temInvest) pScreens.push({
-      key: "invest", dark: true,
-      render() {
-        const conds = [["calendar", "Forma de pagamento", PROP.pagamento], ["clipboard", "Início", PROP.inicio], ["shield", "Validade", PROP.validade]].filter((x) => x[2]);
-        return `
-        <section class="screen screen--dark"><div class="wrap">
-          <p class="eyebrow">Investimento</p>
-          <h2 class="h1">Investimento e <em>condições</em></h2>
-          <div class="invest">
-            <div class="invest__price">
-              <p class="eyebrow">${esc(PROP.plano || PROP.servico || "Investimento")}</p>
-              ${PROP.valor ? `<p class="invest__val">${esc(PROP.valor)}</p>` : ""}
-              ${PROP.periodo ? `<p class="invest__per">${esc(PROP.periodo)}</p>` : ""}
-              ${PROP.taxa || PROP.outras ? `<hr />${PROP.taxa ? `<p>${esc(PROP.taxa)}</p>` : ""}${PROP.outras ? `<p>${esc(PROP.outras)}</p>` : ""}` : ""}
-            </div>
-            ${conds.length ? `<div class="invest__conds"><p class="eyebrow">Condições</p>${conds.map(([i, t, v]) => `<div class="invest__row"><span class="ico">${ico(i)}</span><div><strong>${esc(t)}</strong><span>${esc(v)}</span></div></div>`).join("")}</div>` : ""}
+          <div class="prop__sol">${right}</div>
+        </div>
+      </div></section>`;
+    },
+    hint: () => (PROP && PROP.temInvest ? "Próximo: investimento e condições" : "Próximo: vamos começar"),
+  });
+
+  if (PROP && PROP.temInvest) finals.push({
+    key: "invest", dark: true,
+    render() {
+      const conds = [["calendar", "Forma de pagamento", PROP.pagamento], ["clipboard", "Início", PROP.inicio], ["shield", "Validade", PROP.validade]].filter((x) => x[2]);
+      return `
+      <section class="screen screen--dark"><div class="wrap">
+        <p class="eyebrow">Investimento</p>
+        <h2 class="h1">Investimento e <em>condições</em></h2>
+        <div class="invest">
+          <div class="invest__price">
+            <p class="eyebrow">${esc(PROP.plano || PROP.servico || "Investimento")}</p>
+            ${PROP.valor ? `<p class="invest__val">${esc(PROP.valor)}</p>` : ""}
+            ${PROP.periodo ? `<p class="invest__per">${esc(PROP.periodo)}</p>` : ""}
+            ${PROP.taxa || PROP.outras ? `<hr />${PROP.taxa ? `<p>${esc(PROP.taxa)}</p>` : ""}${PROP.outras ? `<p>${esc(PROP.outras)}</p>` : ""}` : ""}
           </div>
-        </div></section>`;
-      },
-      hint: () => "Próximo: vamos começar",
-    });
-    pScreens.push({
-      key: "start", dark: true, final: true,
-      render() {
-        const nomeSol = PROP.servico || PROP.plano;
-        const msg = `Olá! Sou ${PROP.nome || "gestor(a)"}${PROP.empresa ? `, da ${PROP.empresa}` : ""}. Vi a proposta da Segantini${PROP.id ? ` (${PROP.id})` : ""}${nomeSol ? ` de ${nomeSol}` : ""} e quero avançar.`;
-        return `
-        <section class="screen screen--dark"><div class="wrap final">
-          <div>
-            <p class="eyebrow">Próximos passos</p>
-            <h2 class="h1">Vamos <em>começar?</em></h2>
-            <p class="lead">${PROP.nome ? `${esc(firstName(PROP.nome))}, cada` : "Cada"} empresa tem uma realidade — e esta proposta foi construída para a de ${esc(emp)}.</p>
-            <ol class="steps">${C.proximosPassos.map((p) => `<li><div><strong>${esc(p.titulo)}</strong><span>${esc(p.texto)}</span></div></li>`).join("")}</ol>
-          </div>
-          <aside class="contact-card">
-            <p class="eyebrow" style="margin:0">Fale com a gente</p>
-            <p style="margin:0;color:rgba(255,255,255,.85);font-size:15px">Ficou alguma dúvida ou quer seguir? Responda direto para o nosso time comercial.</p>
-            <a class="btn btn--wa btn--lg" href="https://wa.me/${C.contato.whatsapp}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">${WA_SVG} Quero avançar</a>
-            <a class="btn btn--outline-light" href="https://wa.me/${C.contato.whatsapp}?text=${encodeURIComponent(`Olá! Sou ${PROP.nome || "gestor(a)"}${PROP.empresa ? `, da ${PROP.empresa}` : ""}. Tenho uma dúvida sobre a proposta${PROP.id ? ` ${PROP.id}` : ""}.`)}" target="_blank" rel="noopener">Tenho uma dúvida</a>
-            <a class="plain" href="mailto:${esc(C.contato.email)}">${ico("mail")} ${esc(C.contato.email)}</a>
-            <a class="plain" href="${esc(C.contato.site)}" target="_blank" rel="noopener">${ico("globe")} ${esc(C.contato.siteExibicao)}</a>
-            <img class="final__logo" src="/assets/logo-segantini-branca.png" alt="Segantini Psicologia Empresarial" />
-          </aside>
-        </div></section>`;
-      },
-      hint: () => "",
-    });
-    STEPS = ["Conheça", "Desafios", "Soluções", "Clientes"];
-    pScreens.forEach((sc) => {
-      STEPS.push({ solucao: "Sua solução", invest: "Investimento", start: "Vamos começar" }[sc.key]);
-      sc.step = STEPS.length - 1;
-    });
-    screens.splice(5, screens.length - 5, ...pScreens);
-  }
+          ${conds.length ? `<div class="invest__conds"><p class="eyebrow">Condições</p>${conds.map(([i, t, v]) => `<div class="invest__row"><span class="ico">${ico(i)}</span><div><strong>${esc(t)}</strong><span>${esc(v)}</span></div></div>`).join("")}</div>` : ""}
+        </div>
+      </div></section>`;
+    },
+    hint: () => "Próximo: vamos começar",
+  });
+
+  finals.push({
+    key: "start", dark: true, final: true,
+    render() {
+      const nome = (PROP && PROP.nome) || "";
+      const emp = empresaNome();
+      const steps = `<ol class="steps">${C.proximosPassos.map((p) => `<li><div><strong>${esc(p.titulo)}</strong><span>${esc(p.texto)}</span></div></li>`).join("")}</ol>`;
+      const links = `<a class="plain" href="mailto:${esc(C.contato.email)}">${ico("mail")} ${esc(C.contato.email)}</a>
+          <a class="plain" href="${esc(C.contato.site)}" target="_blank" rel="noopener">${ico("globe")} ${esc(C.contato.siteExibicao)}</a>
+          <img class="final__logo" src="/assets/logo-segantini-branca.png" alt="Segantini Psicologia Empresarial" />`;
+      const card = PROP
+        ? `<p class="eyebrow" style="margin:0">Fale com a gente</p>
+           <p class="contact-card__txt">Ficou alguma dúvida ou quer seguir? Responda direto para o nosso time comercial.</p>
+           <a class="btn btn--wa btn--lg" href="${wa(`Olá! Sou ${nome || "gestor(a)"}${emp ? `, da ${emp}` : ""}. Vi a proposta da Segantini${PROP.id ? ` (${PROP.id})` : ""}${PROP.servico || PROP.plano ? ` de ${PROP.servico || PROP.plano}` : ""} e quero avançar.`)}" target="_blank" rel="noopener">${WA_SVG} Quero avançar</a>
+           <a class="btn btn--outline-light" href="${wa(`Olá! Sou ${nome || "gestor(a)"}${emp ? `, da ${emp}` : ""}. Tenho uma dúvida sobre a proposta${PROP.id ? ` ${PROP.id}` : ""}.`)}" target="_blank" rel="noopener">Tenho uma dúvida</a>`
+        : `<p class="eyebrow" style="margin:0">Fale com a gente</p>
+           <p class="contact-card__txt">Deixe seus dados para o nosso time já chegar preparado — ou fale direto no WhatsApp.</p>
+           <form class="form form--dark" id="leadForm" novalidate>
+             <div class="field"><label for="f-nome">Seu nome</label><input id="f-nome" autocomplete="name" maxlength="80" value="${esc(state.nome)}" /></div>
+             <div class="field"><label for="f-empresa">Empresa</label><input id="f-empresa" autocomplete="organization" maxlength="100" value="${esc(state.empresa)}" /></div>
+             <div class="field"><label for="f-contato">WhatsApp ou e-mail <span>(opcional)</span></label><input id="f-contato" maxlength="100" value="${esc(state.contato)}" /></div>
+             <div class="hp" aria-hidden="true"><label>Website<input id="f-web" tabindex="-1" autocomplete="off" /></label></div>
+             <label class="consent"><input type="checkbox" id="f-consent" ${state.consent ? "checked" : ""} /> <span>Autorizo a Segantini a usar estas informações para entrar em contato comigo.</span></label>
+           </form>
+           <a class="btn btn--wa btn--lg" id="waStart" href="#" target="_blank" rel="noopener">${WA_SVG} Quero conversar</a>
+           <p class="contact-card__status" id="sendStatus" role="status"></p>`;
+      return `
+      <section class="screen screen--dark"><div class="wrap final">
+        <div>
+          <p class="eyebrow">Próximos passos</p>
+          <h2 class="h1">Vamos <em>começar?</em></h2>
+          <p class="lead">${nome ? `${esc(firstName(nome))}, cada` : "Cada"} empresa tem uma realidade${emp ? ` — e esta proposta foi construída para a de ${esc(emp)}` : " — por isso construímos a solução junto com você"}.</p>
+          ${steps}
+        </div>
+        <aside class="contact-card">${card}${links}</aside>
+      </div></section>`;
+    },
+    mount(el) {
+      if (PROP) return;
+      const waBtn = $("#waStart", el);
+      const refresh = () => {
+        const nomes = recIds().slice(0, 3).map((id) => solById[id].nome);
+        const n = state.nome.trim(), e = state.empresa.trim();
+        const msg = n
+          ? `Olá! Sou ${n}${e ? `, da ${e}` : ""}. Vi a apresentação da Segantini${nomes.length ? ` e tenho interesse em ${nomes.join(", ")}` : ""}.`
+          : `Olá! Vi a apresentação da Segantini${nomes.length ? ` e tenho interesse em ${nomes.join(", ")}` : ""} e gostaria de conversar.`;
+        waBtn.href = wa(msg);
+      };
+      [["#f-nome", "nome"], ["#f-empresa", "empresa"], ["#f-contato", "contato"]].forEach(([id, k]) => $(id, el).addEventListener("input", (ev) => { state[k] = ev.target.value; refresh(); }));
+      $("#f-web", el).addEventListener("input", (ev) => (state.hp = ev.target.value));
+      $("#f-consent", el).addEventListener("change", (ev) => (state.consent = ev.target.checked));
+      refresh();
+      // O WhatsApp abre na hora; o registro na planilha acontece em paralelo (se houver nome, empresa e autorização)
+      waBtn.addEventListener("click", async () => {
+        const st = $("#sendStatus", el);
+        if (state.sendStatus === "ok") return;
+        if (state.nome.trim().length < 2 || state.empresa.trim().length < 2 || !state.consent) {
+          st.textContent = "";
+          return;
+        }
+        st.textContent = "Registrando seus dados…";
+        const payload = buildPayload();
+        let ok = await post(payload);
+        if (!ok) ok = await post(payload);
+        state.sendStatus = ok ? "ok" : "fail";
+        if (!ok) { try { localStorage.setItem("seg_pending", JSON.stringify(payload)); } catch {} }
+        st.textContent = ok ? "✓ Recebemos seus dados. Nosso time entrará em contato." : "Não conseguimos registrar agora — siga pelo WhatsApp.";
+      });
+    },
+    hint: () => "",
+  });
+
+  STEPS = ["Conheça", "Desafios", "Soluções", "Clientes"];
+  finals.forEach((sc) => {
+    STEPS.push({ solucao: "Sua solução", invest: "Investimento", start: "Vamos começar" }[sc.key]);
+    sc.step = STEPS.length - 1;
+  });
+  screens.push(...finals);
 
   /* ---------------- Componentes ---------------- */
   function quoteCard(d, showSource) {
@@ -551,61 +472,21 @@
       <figcaption class="quote__who"><span class="avatar">${esc(ini)}</span><span><strong>${esc(d.nome)}</strong><span>${esc(d.cargo || "Cliente")}${d.fonte ? ` · ${esc(d.fonte === "Google" ? "Avaliação no Google" : d.fonte)}` : ""}</span></span></figcaption>
     </figure>`;
   }
-  function questionShell(n, title, sub, body) {
-    return `<section class="screen"><div class="wrap wrap--narrow">
-      <p class="eyebrow">Etapa 5 · Queremos entender sua empresa</p>
-      <div class="q-count">Pergunta <b>${n}</b> de 5</div>
-      <h2 class="h1" style="font-size:clamp(24px,3.6vw,34px)">${esc(title)}</h2>
-      ${sub ? `<p class="lead" style="margin-bottom:22px">${esc(sub)}</p>` : '<div style="height:12px"></div>'}
-      ${body}
-    </div></section>`;
-  }
-  function optBtn(group, label, on, multi, k, value, rawLabel) {
-    return `<button type="button" class="opt ${multi ? "opt--multi" : ""}" data-g="${group}" data-v="${esc(value ?? label)}" aria-pressed="${on}" style="animation-delay:${0.035 * k}s"><span class="opt__dot"></span><span>${rawLabel ? label : esc(label)}</span></button>`;
-  }
-  function bindSingle(el, key) {
-    $$(`[data-g="${key}"]`, el).forEach((b) => b.addEventListener("click", () => {
-      state[key] = b.dataset.v;
-      $$(`[data-g="${key}"]`, el).forEach((x) => x.setAttribute("aria-pressed", x === b));
-      updateNav();
-      clearTimeout(bindSingle.t);
-      bindSingle.t = setTimeout(() => { if (screens[state.i].auto) next(); }, 420);
-    }));
-  }
-  function bindMulti(el, g, set) {
-    $$(`[data-g="${g}"]`, el).forEach((b) => b.addEventListener("click", () => {
-      const v = b.dataset.v;
-      set.has(v) ? set.delete(v) : set.add(v);
-      b.setAttribute("aria-pressed", set.has(v));
-      updateNav();
-    }));
-  }
-
   /* ---------------- WhatsApp ---------------- */
-  function waLink(recIds = []) {
-    let msg = "Olá! Vi a apresentação da Segantini e gostaria de conversar com o time comercial.";
-    if (state.nome.trim()) {
-      msg = `Olá! Sou ${state.nome.trim()}${state.empresa.trim() ? `, da ${state.empresa.trim()}` : ""}. Acabei de ver a apresentação da Segantini`;
-      const nomes = recIds.map((id) => solById[id]?.nome).filter(Boolean);
-      msg += nomes.length ? ` e tenho interesse em conversar sobre ${nomes.join(", ")}.` : " e gostaria de conversar com o time comercial.";
-    }
-    return `https://wa.me/${C.contato.whatsapp}?text=${encodeURIComponent(msg)}`;
-  }
+  const wa = (msg) => `https://wa.me/${C.contato.whatsapp}?text=${encodeURIComponent(msg)}`;
 
   /* ---------------- Envio das respostas ---------------- */
   function buildPayload() {
-    const dd = [...(state.diagDesafios || state.desafios)];
-    const ds = [...(state.diagSolucoes || state.interesse)];
     return {
       nome: state.nome.trim(),
       empresa: state.empresa.trim(),
       contato: state.contato.trim(),
-      porte: state.porte,
-      rh: state.rh,
-      desafios: dd.map((id) => desById[id]?.titulo || id),
-      solucoes: ds.map((id) => solById[id]?.nome || (id === "orientacao" ? "Ainda não sei — quero orientação" : id)),
-      recomendadas: recomendadas(new Set(dd)).slice(0, 3).map((id) => solById[id].nome),
-      melhoria: state.melhoria.trim(),
+      porte: "",
+      rh: "",
+      desafios: [...state.desafios].map((id) => desById[id]?.titulo || id),
+      solucoes: [...state.interesse].map((id) => solById[id]?.nome || id),
+      recomendadas: recIds().slice(0, 3).map((id) => solById[id].nome),
+      melhoria: "",
       consentimento: state.consent,
       vendedor: state.vendedor,
       origem: state.origem,
@@ -621,17 +502,6 @@
       const r = await fetch("/api/lead", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload), signal: ctrl.signal });
       return r.ok;
     } catch { return false; } finally { clearTimeout(t); }
-  }
-  async function submit() {
-    const btn = $("#btnNext");
-    btn.disabled = true;
-    $("#btnNextLabel").innerHTML = '<span class="spinner"></span>';
-    const payload = buildPayload();
-    let ok = await post(payload);
-    if (!ok) ok = await post(payload); // 1 nova tentativa
-    state.sendStatus = ok ? "ok" : "fail";
-    if (!ok) { try { localStorage.setItem("seg_pending", JSON.stringify(payload)); } catch {} }
-    btn.disabled = false;
   }
   // Reenvia respostas que falharam em uma visita anterior
   (async () => {
@@ -676,7 +546,7 @@
     const hint = $("#navHint");
     hint.textContent = typeof h === "object" ? h.t : h;
     hint.classList.toggle("is-ok", typeof h === "object" && h.ok);
-    if (s.final) { hint.innerHTML = `<a class="btn--link" href="#" id="restart">${PROP ? "Rever a proposta" : "Rever a apresentação"}</a>`; $("#restart").onclick = (e) => { e.preventDefault(); state.sendStatus = null; go(0); }; }
+    if (s.final) { hint.innerHTML = `<a class="btn--link" href="#" id="restart">${PROP ? "Rever a proposta" : "Rever a apresentação"}</a>`; $("#restart").onclick = (e) => { e.preventDefault(); go(0); }; }
   }
   let busy = false;
   async function next() {
@@ -696,8 +566,6 @@
   }
   window.addEventListener("popstate", (e) => {
     const i = e.state?.i ?? 0;
-    // Depois do envio, o "voltar" do celular não reabre o formulário (evita registro duplicado)
-    if (!PROP && state.sendStatus && i >= 5 && i <= 9) { history.pushState({ i: state.i }, ""); return; }
     go(i, true);
   });
 

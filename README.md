@@ -6,14 +6,15 @@ e responde um diagnóstico rápido. As respostas caem numa planilha do Google Sh
 
 ## Jornada
 
-| # | Etapa | O que o lead faz |
-|---|-------|------------------|
-| 1 | Conheça a Segantini | Abertura com logo, posicionamento e indicadores + "Quem somos" (Letícia, pilares e "o que a gente não é") |
-| 2 | Desafios | Marca, em cards, os desafios que vive (13 opções, múltipla escolha) |
-| 3 | Soluções | Vê as 9 soluções, com as **ligadas aos desafios marcados primeiro**; abre cada uma (problema → o que muda) e marca interesse |
-| 4 | Clientes | Indicadores, carrossel de depoimentos, cases com números, empresas atendidas e "Ver todas as avaliações" |
-| 5 | Sua empresa | 5 perguntas rápidas (porte, RH, desafios e soluções já pré-preenchidos, campo aberto) + nome/empresa/contato |
-| 6 | Próximo passo | Mensagem personalizada, 3 soluções sugeridas e botão de WhatsApp com mensagem pronta |
+| # | Etapa | Link padrão (`/`) | Link de proposta (`/#p=...`, gerado em `/gerador`) |
+|---|-------|-------------------|-----------------------------------------------------|
+| 1 | Conheça | Abertura + Quem somos | Igual, com "Preparada para {empresa}", saudação e mensagem do vendedor |
+| 2 | Desafios | Lead marca os desafios | Desafios da conversa já marcados (inclui os criados no gerador) |
+| 3 | Soluções | Ligadas aos desafios no topo, **abertas** | Soluções escolhidas no topo, **abertas**, com "Recomendada para {empresa}" |
+| 4 | Clientes | Indicadores, depoimentos, cases | Igual |
+| 5 | Sua solução | "A solução para sua empresa", montada pelos desafios/soluções marcados | "A solução para {empresa}": momento, solução, entregáveis, como acontece |
+| 6 | Investimento | — | Valor, periodicidade, condições (quando preenchidos) |
+| 7 | Vamos começar? | Próximos passos + contato opcional (vai para a planilha) e WhatsApp | Próximos passos + "Quero avançar" / "Tenho uma dúvida" no WhatsApp |
 
 ## Estrutura dos arquivos
 
@@ -45,12 +46,14 @@ Dois modos de uso:
 
 | Link | Para quê | Etapas finais |
 |------|----------|---------------|
-| Padrão (`/` ou `/?v=Ana`) | Primeiro contato com o lead | 5 · Sua empresa (diagnóstico → planilha) e 6 · Próximo passo |
+| Padrão (`/` ou `/?v=Ana`) | Primeiro contato com o lead | 5 · Sua solução (automática) e 6 · Vamos começar? (contato → planilha) |
 | Proposta (`/#p=...`, gerado no `/gerador`) | Lead já diagnosticado, proposta montada | 5 · A solução para {empresa} · 6 · Investimento e condições · 7 · Vamos começar? |
 
 No gerador, o vendedor preenche:
 1. Gestor, empresa, vendedor e (opcional) WhatsApp do gestor
-2. Desafios já conversados (chegam pré-marcados) e até 4 soluções em destaque
+2. Desafios já conversados (chegam pré-marcados) e até 6 soluções em destaque (aparecem abertas).
+   É possível **criar desafios e soluções próprios** ("+ Adicionar outro…") e **excluí-los** pelo ×.
+   Eles ficam salvos no navegador do vendedor para reaproveitar em outras propostas.
 3. Mensagem de abertura
 4. **A solução para a empresa:** contexto, principal desafio, o que resolver e até quando; solução recomendada;
    entregáveis (um por linha); prazo, cadência e responsável Segantini
@@ -97,8 +100,10 @@ Opcional — aviso por e-mail a cada lead: no Apps Script, edite o e-mail na fun
 
 ## Consultando os leads
 
-- Aba **Respostas**: uma linha por preenchimento, com data/hora, nome, empresa, contato, porte, estrutura de RH,
-  desafios, soluções de interesse, soluções sugeridas, texto aberto, vendedor, origem, dispositivo e tempo gasto.
+- Aba **Respostas**: uma linha por contato deixado no link padrão (tela "Vamos começar?"), com data/hora, nome,
+  empresa, contato, desafios marcados, soluções de interesse, soluções sugeridas, vendedor, origem, dispositivo e
+  tempo gasto. As colunas "Nº de colaboradores", "Estrutura de RH" e "O que quer melhorar" ficam vazias
+  (o diagnóstico em perguntas foi substituído pelo modelo de proposta).
 - Coluna **Status comercial** (lista: Novo → Em contato → Reunião agendada → Proposta enviada → Fechado/Perdido)
   e **Observações** para o time atualizar.
 - Aba **Painel**: total de leads, últimos 7 dias, funil por status, taxa de conversão, porte das empresas,

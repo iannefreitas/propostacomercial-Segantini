@@ -1,29 +1,73 @@
 /* Gerador de links de proposta personalizada (uso interno do comercial).
-   Monta o parâmetro ?p= que a apresentação (js/app.js) lê para se personalizar. */
+   Monta o parâmetro #p= que a apresentação (js/app.js) lê para se personalizar. */
 (function () {
   "use strict";
   const C = window.SEGANTINI;
   const $ = (s) => document.querySelector(s);
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  const MAX_SOL = 4;
+  const MAX_SOL = 6;
   const sel = { d: new Set(), s: new Set() };
   let id = "";
 
-  function chips(el, list, set, max) {
-    el.innerHTML = list.map((x) => `<button type="button" class="gen__chip" data-id="${esc(x.id)}" aria-pressed="false">${esc(x.titulo || x.nome)}</button>`).join("");
-    el.addEventListener("click", (e) => {
-      const b = e.target.closest(".gen__chip");
-      if (!b) return;
-      const v = b.dataset.id;
-      set.has(v) ? set.delete(v) : set.add(v);
-      b.setAttribute("aria-pressed", set.has(v));
-      if (max) el.querySelectorAll(".gen__chip").forEach((c) => (c.disabled = set.size >= max && !set.has(c.dataset.id)));
-      update();
-    });
+  /* Biblioteca de itens criados pelo vendedor (fica salva neste navegador para reaproveitar).
+     d: [{ id, titulo, texto }]  s: [{ id, nome, descricao, problema, resultado }] */
+  let lib = { d: [], s: [] };
+  try { lib = Object.assign(lib, JSON.parse(localStorage.getItem("seg_lib") || "{}")); } catch {}
+  const saveLib = () => { try { localStorage.setItem("seg_lib", JSON.stringify(lib)); } catch {} };
+  const isCustom = (x) => x.startsWith("x-");
+
+  function drawChips(kind) {
+    const el = kind === "d" ? $("#g-desafios") : $("#g-solucoes");
+    const set = sel[kind];
+    const base = kind === "d" ? C.desafios : C.solucoes;
+    const items = [...base, ...lib[kind]];
+    el.innerHTML = items.map((x) => {
+      const custom = isCustom(x.id);
+      const off = kind === "s" && set.size >= MAX_SOL && !set.has(x.id);
+      return `<span class="gen__chipwrap"><button type="button" class="gen__chip ${custom ? "is-custom" : ""}" data-id="${esc(x.id)}" aria-pressed="${set.has(x.id)}" ${off ? "disabled" : ""}>${esc(x.titulo || x.nome)}</button>${custom ? `<button type="button" class="gen__del" data-del="${esc(x.id)}" aria-label="Excluir ${esc(x.titulo || x.nome)}" title="Excluir">×</button>` : ""}</span>`;
+    }).join("");
+    if (kind === "s") $("#g-sol-list").innerHTML = items.map((x) => `<option value="${esc(x.nome)}"></option>`).join("");
   }
-  chips($("#g-desafios"), C.desafios, sel.d);
-  chips($("#g-solucoes"), C.solucoes, sel.s, MAX_SOL);
-  $("#g-sol-list").innerHTML = C.solucoes.map((x) => `<option value="${esc(x.nome)}"></option>`).join("");
+  ["d", "s"].forEach((kind) => {
+    const el = kind === "d" ? $("#g-desafios") : $("#g-solucoes");
+    el.addEventListener("click", (e) => {
+      const del = e.target.closest("[data-del]");
+      if (del) {
+        const x = del.dataset.del;
+        const item = lib[kind].find((i) => i.id === x);
+        if (!confirm(`Excluir “${item.titulo || item.nome}” da sua lista?`)) return;
+        lib[kind] = lib[kind].filter((i) => i.id !== x);
+        sel[kind].delete(x);
+        saveLib(); drawChips(kind); update();
+        return;
+      }
+      const b = e.target.closest(".gen__chip");
+      if (!b || b.disabled) return;
+      const x = b.dataset.id;
+      sel[kind].has(x) ? sel[kind].delete(x) : sel[kind].add(x);
+      drawChips(kind); update();
+    });
+  });
+  const newKey = () => "x-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+  $("#g-add-d").addEventListener("click", () => {
+    const titulo = $("#g-nd-t").value.trim();
+    if (!titulo) return $("#g-nd-t").focus();
+    const item = { id: newKey(), titulo: titulo.slice(0, 80), texto: $("#g-nd-x").value.trim().slice(0, 140) };
+    lib.d.push(item); sel.d.add(item.id); saveLib();
+    $("#g-nd-t").value = ""; $("#g-nd-x").value = "";
+    drawChips("d"); update(); toast("Desafio adicionado");
+  });
+  $("#g-add-s").addEventListener("click", () => {
+    const nome = $("#g-ns-n").value.trim();
+    if (!nome) return $("#g-ns-n").focus();
+    const item = { id: newKey(), nome: nome.slice(0, 80), descricao: $("#g-ns-d").value.trim().slice(0, 140), problema: $("#g-ns-p").value.trim().slice(0, 240), resultado: $("#g-ns-r").value.trim().slice(0, 240) };
+    lib.s.push(item);
+    if (sel.s.size < MAX_SOL) sel.s.add(item.id);
+    saveLib();
+    ["#g-ns-n", "#g-ns-d", "#g-ns-p", "#g-ns-r"].forEach((f) => ($(f).value = ""));
+    drawChips("s"); update(); toast("Solução adicionada");
+  });
+  drawChips("d"); drawChips("s");
 
   // Validade padrão: 7 dias a partir de hoje (como na proposta institucional)
   const vd = new Date(Date.now() + 7 * 864e5).toLocaleDateString("pt-BR");
@@ -60,7 +104,13 @@
     $("#g-cc").textContent = $("#g-msg").value.length;
     if (empresa !== lastEmpresa) { id = empresa ? newId() : ""; lastEmpresa = empresa; }
     const ok = !!empresa;
-    const obj = { n: nome, e: empresa, v: vendedor, m: msg, d: [...sel.d], s: [...sel.s], id };
+    const pick = (kind) => [...sel[kind]].map((x) => lib[kind].find((i) => i.id === x)).filter(Boolean);
+    const obj = {
+      n: nome, e: empresa, v: vendedor, m: msg, id,
+      d: [...sel.d].filter((x) => !isCustom(x)), s: [...sel.s].filter((x) => !isCustom(x)),
+      cd: pick("d").map((i) => [i.titulo, i.texto]),
+      cs: pick("s").map((i) => [i.nome, i.descricao, i.problema, i.resultado]),
+    };
     Object.entries(F).forEach(([k, sel]) => (obj[k] = v(sel)));
     const ent = $("#g-ent").value.split("\n").map((x) => x.replace(/^[\s•\-*]+/, "").trim()).filter(Boolean).slice(0, 12);
     obj.ent = ent;
