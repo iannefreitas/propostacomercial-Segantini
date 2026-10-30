@@ -44,7 +44,7 @@
   "rewrites": [
     {
       "source": "/p/:code",
-      "destination": "/index.html"
+      "destination": "/"
     }
   ]
 }

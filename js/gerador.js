@@ -146,9 +146,13 @@
     } catch {}
     btn.disabled = false; btn.textContent = "Gerar link curto";
     if (!j.ok) {
-      toast(j.error === "not_configured" || j.error === "sheet_error" || j.error === "bad_upstream"
-        ? "A planilha ainda não aceita propostas — atualize o Apps Script (ver README)."
-        : "Não foi possível gerar o link agora. Tente de novo.");
+      const msg = j.error === "script_outdated"
+        ? "O Apps Script publicado ainda é a versão antiga. Cole o Code.gs novo e implante uma Nova versão."
+        : ["not_configured", "sheet_error", "bad_upstream", "unauthorized"].includes(j.error)
+          ? "A planilha não respondeu como esperado — confira o Apps Script (ver README)."
+          : "Não foi possível gerar o link agora. Tente de novo.";
+      $("#g-hint").textContent = msg;
+      toast(msg);
       return;
     }
     shortLink = `${location.origin}/p/${j.code}`;

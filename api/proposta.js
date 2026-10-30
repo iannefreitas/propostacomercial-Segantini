@@ -53,6 +53,8 @@ module.exports = async function handler(req, res) {
     if (rateLimited("g:" + ip, 120)) return res.status(429).json({ ok: false, error: "too_many_requests" });
     const out = await callSheet({ action: "getProposal", code, countOpen: req.query?.preview !== "1" });
     if (!out.ok) return res.status(out.error === "not_found" ? 404 : 502).json({ ok: false, error: out.error });
+    // Script antigo (sem getProposal) responde ok sem "json"
+    if (typeof out.json !== "string") return res.status(502).json({ ok: false, error: "script_outdated" });
     let data = null;
     try { data = JSON.parse(out.json); } catch { return res.status(502).json({ ok: false, error: "bad_data" }); }
     return res.status(200).json({ ok: true, data });
@@ -79,6 +81,8 @@ module.exports = async function handler(req, res) {
       meta: { empresa: str(data.e, 100), gestor: str(data.n, 80), vendedor: str(data.v, 60), solucao: str(data.sol, 120), valor: str(data.val, 60) },
     });
     if (!out.ok) return res.status(out.error === "not_configured" ? 503 : 502).json({ ok: false, error: out.error || "sheet_error" });
+    // Script antigo (sem saveProposal) responde ok sem devolver o código — a proposta não foi salva
+    if (out.code !== code) return res.status(502).json({ ok: false, error: "script_outdated" });
     return res.status(200).json({ ok: true, code });
   }
 
